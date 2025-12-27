@@ -1,12 +1,30 @@
-import { Button } from "@/components/ui/button";
+'use client'
 
-export default function Home() {
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+export default function TestPage() {
+  const testConnection = async () => {
+    const { data, error } = await supabase.from('test').select('*')
+
+    if (error) {
+      alert('❌ Lỗi kết nối: ' + error.message)
+    } else {
+      alert('✅ Kết nối OK – có ' + data.length + ' dòng')
+      console.log(data)
+    }
+  }
+
   return (
-    <main className="h-screen flex items-center justify-center flex-col gap-4">
-      <h1 className="text-3xl font-bold">
-        shadcn/ui đã cài thành công 🎉
-      </h1>
-      <Button>Click me</Button>
-    </main>
-  );
+    <div style={{ padding: 20 }}>
+      <h1>Test Supabase</h1>
+      <button onClick={testConnection}>
+        Test kết nối
+      </button>
+    </div>
+  )
 }
