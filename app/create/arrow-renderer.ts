@@ -77,16 +77,16 @@ export function drawArrow(ctx: CanvasRenderingContext2D, arrow: Arrow, isSelecte
   ctx.setLineDash([])
 
   // Draw arrowhead
-  const angle = Math.atan2(endY - startY, endX - startX)
-  const arrowSize = 10
+  // const angle = Math.atan2(endY - startY, endX - startX)
+  // const arrowSize = 10
 
-  ctx.fillStyle = arrow.color || "#64748b"
-  ctx.beginPath()
-  ctx.moveTo(endX, endY)
-  ctx.lineTo(endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - arrowSize * Math.sin(angle - Math.PI / 6))
-  ctx.lineTo(endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - arrowSize * Math.sin(angle + Math.PI / 6))
-  ctx.closePath()
-  ctx.fill()
+  // ctx.fillStyle = arrow.color || "#64748b"
+  // ctx.beginPath()
+  // ctx.moveTo(endX, endY)
+  // ctx.lineTo(endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - arrowSize * Math.sin(angle - Math.PI / 6))
+  // ctx.lineTo(endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - arrowSize * Math.sin(angle + Math.PI / 6))
+  // ctx.closePath()
+  // ctx.fill()
 
   // Draw endpoints
   if (isSelected) {

@@ -1,17 +1,70 @@
 "use client"
 
-import type React from "react"
 import { useRef, useEffect, useState } from "react"
+import type React from "react"
 import { useTree } from "@/lib/tree-context"
 import type { FamilyNode } from "@/lib/types"
 import {
   renderNodeOnCanvas,
   isPointInNode,
   getClosestConnectionPoint,
+  isPointNearNodeEdge,
+  renderSnapPoints,
   NODE_WIDTH_CONST,
   NODE_HEIGHT_CONST,
 } from "./family-node-renderer"
 import { drawArrow, isPointNearArrow, isPointNearEndpoint, getClosestNode } from "./arrow-renderer"
+function getSnapPoints(node: FamilyNode) {
+  const { x, y, width, height } = node
+
+  const top = [
+    { x: x + width * 0.25, y },
+    { x: x + width * 0.5, y },
+    { x: x + width * 0.75, y },
+  ]
+
+  const bottom = [
+    { x: x + width * 0.25, y: y + height },
+    { x: x + width * 0.5, y: y + height },
+    { x: x + width * 0.75, y: y + height },
+  ]
+
+  const left = [
+    { x, y: y + height * 0.25 },
+    { x, y: y + height * 0.5 },
+    { x, y: y + height * 0.75 },
+  ]
+
+  const right = [
+    { x: x + width, y: y + height * 0.25 },
+    { x: x + width, y: y + height * 0.5 },
+    { x: x + width, y: y + height * 0.75 },
+  ]
+
+  const corners = [
+    { x, y },
+    { x: x + width, y },
+    { x, y: y + height },
+    { x: x + width, y: y + height },
+  ]
+
+  return [...top, ...bottom, ...left, ...right, ...corners]
+}
+
+function findNearestSnapPoint(x: number, y: number, nodes: FamilyNode[]) {
+  let nearest = null
+  let minDist = 12 // snap radius
+  nodes.forEach(node => {
+    getSnapPoints(node).forEach(p => {
+      const d = Math.hypot(x - p.x, y - p.y)
+      if (d < minDist) {
+        minDist = d
+        nearest = { ...p, nodeId: node.id }
+      }
+    })
+  })
+  return nearest
+}
 
 const NODE_WIDTH = NODE_WIDTH_CONST
 const NODE_HEIGHT = NODE_HEIGHT_CONST
@@ -35,9 +88,35 @@ export function FamilyCanvas() {
     updateArrow,
     deleteArrow,
     setArrowDragState,
+    deleteNode,
   } = useTree()
   const [hoveredNodeId, setHoveredNodeId] = useState<string>()
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null)
+  const [isDraggingStarted, setIsDraggingStarted] = useState(false)
+  const mouseDownPosRef = useRef({ x: 0, y: 0 })
+
+  // Handle keyboard events for delete
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Delete selected arrow
+        if (selectedArrowId) {
+          deleteArrow(selectedArrowId)
+          setSelectedArrowId(null)
+          e.preventDefault()
+        }
+        // Delete selected node
+        else if (canvasState.selectedNodeId) {
+          deleteNode(canvasState.selectedNodeId)
+          selectNode(null)
+          e.preventDefault()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedArrowId, canvasState.selectedNodeId, deleteArrow, deleteNode, selectNode])
 
   const draw = () => {
     const canvas = canvasRef.current
@@ -129,27 +208,14 @@ export function FamilyCanvas() {
         const derivX = 2 * mt * (controlX - sourceX) + 2 * t * (targetX - controlX)
         const derivY = 2 * mt * (controlY - sourceY) + 2 * t * (targetY - controlY)
 
-        const angle = Math.atan2(derivY, derivX)
-        const arrowSize = 12
-
-        ctx.fillStyle = ctx.strokeStyle
-        ctx.beginPath()
-        ctx.moveTo(targetX, targetY)
-        ctx.lineTo(
-          targetX - arrowSize * Math.cos(angle - Math.PI / 6),
-          targetY - arrowSize * Math.sin(angle - Math.PI / 6),
-        )
-        ctx.lineTo(
-          targetX - arrowSize * Math.cos(angle + Math.PI / 6),
-          targetY - arrowSize * Math.sin(angle + Math.PI / 6),
-        )
-        ctx.closePath()
-        ctx.fill()
       }
     })
 
     if (connectionDrawState.isDrawing && connectionDrawState.fromNodeId) {
       const fromNode = tree.nodes.find((n) => n.id === connectionDrawState.fromNodeId)
+      tree.nodes.forEach(node => {
+        renderSnapPoints(ctx, node)
+      })
       if (fromNode) {
         const startPoint = getClosestConnectionPoint(
           fromNode.x,
@@ -174,6 +240,14 @@ export function FamilyCanvas() {
       const isSelected = selectedArrowId === arrow.id
       drawArrow(ctx, arrow, isSelected, tree.nodes)
     })
+
+    // Draw snap points when dragging arrow endpoint
+    if (arrowDragState.isArrowDragging && arrowDragState.draggedEndpoint && hoveredNodeId) {
+      const hoveredNode = tree.nodes.find(n => n.id === hoveredNodeId)
+      if (hoveredNode) {
+        renderSnapPoints(ctx, hoveredNode)
+      }
+    }
 
     // Draw nodes
     tree.nodes.forEach((node) => {
@@ -203,11 +277,18 @@ export function FamilyCanvas() {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
+    // Store initial mouse position
+    mouseDownPosRef.current = { x, y }
+    setIsDraggingStarted(false)
+
     let arrowClicked = false
 
+    // Check if clicking on arrow (prioritize endpoints for selected arrows)
     for (const arrow of arrows) {
-      // Check if clicking on endpoint
-      if (isPointNearEndpoint(x, y, arrow, "start", 10)) {
+      const isSelected = selectedArrowId === arrow.id
+
+      // Check endpoints first (only if arrow is selected)
+      if (isSelected && isPointNearEndpoint(x, y, arrow, "start", 10)) {
         setArrowDragState({
           isArrowDragging: true,
           draggedArrowId: arrow.id,
@@ -215,13 +296,12 @@ export function FamilyCanvas() {
           offsetX: x - arrow.startX,
           offsetY: y - arrow.startY,
         })
-        setSelectedArrowId(arrow.id)
         selectNode(null)
         arrowClicked = true
         break
       }
 
-      if (isPointNearEndpoint(x, y, arrow, "end", 10)) {
+      if (isSelected && isPointNearEndpoint(x, y, arrow, "end", 10)) {
         setArrowDragState({
           isArrowDragging: true,
           draggedArrowId: arrow.id,
@@ -229,7 +309,6 @@ export function FamilyCanvas() {
           offsetX: x - arrow.endX,
           offsetY: y - arrow.endY,
         })
-        setSelectedArrowId(arrow.id)
         selectNode(null)
         arrowClicked = true
         break
@@ -237,14 +316,13 @@ export function FamilyCanvas() {
 
       // Check if clicking on arrow body
       if (isPointNearArrow(x, y, arrow)) {
-        setArrowDragState({
-          isArrowDragging: true,
-          draggedArrowId: arrow.id,
-          draggedEndpoint: null,
-          offsetX: x - (arrow.startX + arrow.endX) / 2,
-          offsetY: y - (arrow.startY + arrow.endY) / 2,
-        })
-        setSelectedArrowId(arrow.id)
+        // If clicking same arrow, deselect it
+        if (selectedArrowId === arrow.id) {
+          setSelectedArrowId(null)
+        } else {
+          // Select new arrow
+          setSelectedArrowId(arrow.id)
+        }
         selectNode(null)
         arrowClicked = true
         break
@@ -254,55 +332,50 @@ export function FamilyCanvas() {
     if (arrowClicked) return
 
     let clickedNode: FamilyNode | undefined
-    let isPortClick = false
 
     for (const node of tree.nodes) {
       if (isPointInNode(x, y, node)) {
         clickedNode = node
-
-        // Check if clicked on a port (within 15px radius of any port)
-        const ports = [
-          { x: node.x + NODE_WIDTH / 2, y: node.y - 4 },
-          { x: node.x + NODE_WIDTH / 2, y: node.y + NODE_HEIGHT + 4 },
-          { x: node.x - 4, y: node.y + NODE_HEIGHT / 2 },
-          { x: node.x + NODE_WIDTH + 4, y: node.y + NODE_HEIGHT / 2 },
-        ]
-
-        for (const port of ports) {
-          const dist = Math.hypot(x - port.x, y - port.y)
-          if (dist <= 15) {
-            isPortClick = true
-            break
-          }
-        }
         break
       }
     }
 
     if (clickedNode) {
-      if (isPortClick) {
-        // Start connection drawing
+      // Check if clicking near edge for connection drawing
+      if (isPointNearNodeEdge(x, y, clickedNode)) {
         setConnectionDrawState({
           isDrawing: true,
           fromNodeId: clickedNode.id,
           currentX: x,
           currentY: y,
-          fromConnectionPoint: "bottom",
         })
         selectNode(null)
+        setSelectedArrowId(null)
+        return
+      }
+
+      // If clicking same node that's already selected, deselect it
+      if (canvasState.selectedNodeId === clickedNode.id) {
+        selectNode(null)
+        setSelectedArrowId(null)
       } else {
-        // Regular node selection and dragging
+        // Select new node but don't start dragging yet
         selectNode(clickedNode.id)
+        setSelectedArrowId(null)
+        // Prepare for potential drag
         setDragState({
-          isDragging: true,
+          isDragging: false,
           draggedNodeId: clickedNode.id,
           offsetX: x - clickedNode.x,
           offsetY: y - clickedNode.y,
         })
       }
-    } else {
-      selectNode(null)
+      return
     }
+
+    // Click on empty space - deselect all
+    setSelectedArrowId(null)
+    selectNode(null)
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -312,6 +385,23 @@ export function FamilyCanvas() {
     const rect = canvas.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
+
+    // Check if mouse moved enough to start dragging (5px threshold)
+    const dragThreshold = 5
+    const dx = Math.abs(x - mouseDownPosRef.current.x)
+    const dy = Math.abs(y - mouseDownPosRef.current.y)
+    
+    if (!isDraggingStarted && (dx > dragThreshold || dy > dragThreshold)) {
+      setIsDraggingStarted(true)
+      
+      // Start dragging node if one is prepared
+      if (dragState.draggedNodeId && !dragState.isDragging) {
+        setDragState({
+          ...dragState,
+          isDragging: true,
+        })
+      }
+    }
 
     if (connectionDrawState.isDrawing) {
       setConnectionDrawState({
@@ -325,27 +415,55 @@ export function FamilyCanvas() {
       if (!arrow) return
 
       if (arrowDragState.draggedEndpoint === "start") {
-        // Drag start endpoint
+        // Drag start endpoint with snap
         const newStartX = x - arrowDragState.offsetX
         const newStartY = y - arrowDragState.offsetY
-        const closestNode = getClosestNode(newStartX, newStartY, tree.nodes)
-
-        updateArrow(arrow.id, {
-          startX: newStartX,
-          startY: newStartY,
-          startNodeId: closestNode?.id,
-        })
+        
+        // Find nearest snap point
+        const snapPoint = findNearestSnapPoint(newStartX, newStartY, tree.nodes)
+        
+        if (snapPoint) {
+          // Snap to node
+          updateArrow(arrow.id, {
+            startX: snapPoint.x,
+            startY: snapPoint.y,
+            startNodeId: snapPoint.nodeId,
+          })
+          setHoveredNodeId(snapPoint.nodeId)
+        } else {
+          // Free position
+          updateArrow(arrow.id, {
+            startX: newStartX,
+            startY: newStartY,
+            startNodeId: undefined,
+          })
+          setHoveredNodeId(undefined)
+        }
       } else if (arrowDragState.draggedEndpoint === "end") {
-        // Drag end endpoint
+        // Drag end endpoint with snap
         const newEndX = x - arrowDragState.offsetX
         const newEndY = y - arrowDragState.offsetY
-        const closestNode = getClosestNode(newEndX, newEndY, tree.nodes)
-
-        updateArrow(arrow.id, {
-          endX: newEndX,
-          endY: newEndY,
-          endNodeId: closestNode?.id,
-        })
+        
+        // Find nearest snap point
+        const snapPoint = findNearestSnapPoint(newEndX, newEndY, tree.nodes)
+        
+        if (snapPoint) {
+          // Snap to node
+          updateArrow(arrow.id, {
+            endX: snapPoint.x,
+            endY: snapPoint.y,
+            endNodeId: snapPoint.nodeId,
+          })
+          setHoveredNodeId(snapPoint.nodeId)
+        } else {
+          // Free position
+          updateArrow(arrow.id, {
+            endX: newEndX,
+            endY: newEndY,
+            endNodeId: undefined,
+          })
+          setHoveredNodeId(undefined)
+        }
       } else {
         // Drag entire arrow
         const centerX = (arrow.startX + arrow.endX) / 2
@@ -362,18 +480,20 @@ export function FamilyCanvas() {
       }
     }
 
-    // Check for hovered node
-    let hoveredNode: FamilyNode | undefined
-    for (const node of tree.nodes) {
-      if (isPointInNode(x, y, node)) {
-        hoveredNode = node
-        break
+    // Check for hovered node (only when not dragging arrow)
+    if (!arrowDragState.isArrowDragging) {
+      let hoveredNode: FamilyNode | undefined
+      for (const node of tree.nodes) {
+        if (isPointInNode(x, y, node)) {
+          hoveredNode = node
+          break
+        }
       }
+      setHoveredNodeId(hoveredNode?.id)
     }
-    setHoveredNodeId(hoveredNode?.id)
 
-    // Handle dragging
-    if (dragState.isDragging && dragState.draggedNodeId) {
+    // Handle node dragging (only if dragging has started)
+    if (dragState.isDragging && dragState.draggedNodeId && isDraggingStarted) {
       const newX = x - dragState.offsetX
       const newY = y - dragState.offsetY
 
@@ -382,19 +502,39 @@ export function FamilyCanvas() {
   }
 
   const handleMouseUp = () => {
+    setIsDraggingStarted(false)
+    
     setDragState({
       isDragging: false,
       draggedNodeId: null,
       offsetX: 0,
       offsetY: 0,
     })
-    setConnectionDrawState({
-      isDrawing: false,
-      fromNodeId: null,
-      currentX: 0,
-      currentY: 0,
-      fromConnectionPoint: "bottom",
-    })
+    
+    if (connectionDrawState.isDrawing && connectionDrawState.fromNodeId) {
+      const startNode = tree.nodes.find(n => n.id === connectionDrawState.fromNodeId)
+      const endSnap = findNearestSnapPoint(connectionDrawState.currentX, connectionDrawState.currentY, tree.nodes)
+      
+      if (startNode && endSnap) {
+        addConnection({
+          sourceId: startNode.id,
+          targetId: endSnap.nodeId,
+          type: "parent-child",
+        })
+      }
+
+      setConnectionDrawState({
+        isDrawing: false,
+        fromNodeId: null,
+        currentX: 0,
+        currentY: 0,
+        fromConnectionPoint: "bottom",
+      })
+    }
+
+    // Reset hover state when mouse up
+    setHoveredNodeId(undefined)
+
     setArrowDragState({
       isArrowDragging: false,
       draggedArrowId: null,
@@ -403,21 +543,6 @@ export function FamilyCanvas() {
       offsetY: 0,
     })
   }
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const canvas = canvasRef.current
-      if (canvas && !canvas.contains(e.target as Node)) {
-        setSelectedArrowId(null)
-        selectNode(null)
-      }
-    }
-
-    document.addEventListener("click", handleClickOutside)
-    return () => {
-      document.removeEventListener("click", handleClickOutside)
-    }
-  }, [selectNode])
 
   return (
     <div ref={containerRef} className="relative w-full h-full bg-white cursor-crosshair overflow-hidden">

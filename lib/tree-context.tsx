@@ -13,6 +13,7 @@ import type {
   ArrowDragState,
 } from "./types"
 import { getCurrentTree } from "./storage"
+import { getSnapPoints } from "@/app/create/family-node-renderer"
 
 interface TreeContextType {
   tree: FamilyTree
@@ -36,9 +37,27 @@ interface TreeContextType {
   updateArrow: (id: string, updates: Partial<Arrow>) => void
   deleteArrow: (id: string) => void
   setArrowDragState: (state: Partial<ArrowDragState>) => void
+  getsnapPoints: (node: FamilyNode) => { x: number; y: number }[]
+  getNearestSnapPoint: (x: number, y: number, nodes: FamilyNode[]) => { x: number; y: number; nodeId: string } | null
 }
 
 const TreeContext = createContext<TreeContextType | undefined>(undefined)
+
+export function findNearestSnapPoint(x: number, y: number, nodes: FamilyNode[]) {
+  let nearest = null
+  let minDist = 15 // bán kính snap
+  nodes.forEach(node => {
+    getSnapPoints(node).forEach(p => {
+      const d = Math.hypot(x - p.x, y - p.y)
+      if (d < minDist) {
+        minDist = d
+        nearest = { ...p, nodeId: node.id }
+      }
+    })
+  })
+  return nearest
+}
+
 
 export function TreeProvider({ children }: { children: React.ReactNode }) {
   const [tree, setTree] = useState<FamilyTree>({
@@ -129,17 +148,17 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     }))
   }, [])
 
-  const addConnection = useCallback((connection: Omit<Connection, "id">) => {
-    const newConnection: Connection = {
-      ...connection,
-      id: `conn-${Date.now()}`,
-    }
-    setTree((prev) => ({
+  const addConnection = (connection: Omit<Connection, "id">) => {
+    const id = crypto.randomUUID()
+    const newConnection: Connection = { id, ...connection }
+    setTree(prev => ({
       ...prev,
       connections: [...prev.connections, newConnection],
-      updatedAt: new Date(),
     }))
-  }, [])
+    return id
+  }
+
+  
 
   const deleteConnection = useCallback((id: string) => {
     setTree((prev) => ({
@@ -164,13 +183,19 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     setTree(newTree)
   }, [])
 
-  const addArrow = useCallback((arrow: Omit<Arrow, "id">) => {
+  const addArrow = (arrow: Omit<Arrow, "id">): string => {
+    const id = crypto.randomUUID()
+
     const newArrow: Arrow = {
+      id,
       ...arrow,
-      id: `arrow-${Date.now()}`,
     }
-    setArrows((prev) => [...prev, newArrow])
-  }, [])
+
+    setArrows(prev => [...prev, newArrow])
+
+    return id
+  }
+
 
   const updateArrow = useCallback((id: string, updates: Partial<Arrow>) => {
     setArrows((prev) => prev.map((arrow) => (arrow.id === id ? { ...arrow, ...updates } : arrow)))
@@ -230,6 +255,9 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     updateArrow,
     deleteArrow,
     setArrowDragState: handleSetArrowDragState,
+    getsnapPoints: getSnapPoints,
+    getNearestSnapPoint: findNearestSnapPoint,
+
   }
 
   return <TreeContext.Provider value={value}>{children}</TreeContext.Provider>

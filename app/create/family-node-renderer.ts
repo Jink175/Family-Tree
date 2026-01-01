@@ -137,30 +137,102 @@ export function getClosestConnectionPoint(
   nodeY: number,
   mouseX: number,
   mouseY: number,
-): { x: number; y: number; point: "top" | "bottom" | "left" | "right" } {
-  const centerX = nodeX + NODE_WIDTH / 2
-  const centerY = nodeY + NODE_HEIGHT / 2
+): { x: number; y: number } {
+  const left = nodeX
+  const right = nodeX + NODE_WIDTH
+  const top = nodeY
+  const bottom = nodeY + NODE_HEIGHT
 
-  const points = {
-    top: { x: centerX, y: nodeY - 4 },
-    bottom: { x: centerX, y: nodeY + NODE_HEIGHT + 4 },
-    left: { x: nodeX - 4, y: centerY },
-    right: { x: nodeX + NODE_WIDTH + 4, y: centerY },
-  }
+  // Clamp mouse position to rectangle bounds
+  const clampedX = Math.max(left, Math.min(mouseX, right))
+  const clampedY = Math.max(top, Math.min(mouseY, bottom))
 
-  let closest: "top" | "bottom" | "left" | "right" = "top"
-  let minDist = Number.POSITIVE_INFINITY
+  // Distances to each edge
+  const distLeft = Math.abs(clampedX - left)
+  const distRight = Math.abs(clampedX - right)
+  const distTop = Math.abs(clampedY - top)
+  const distBottom = Math.abs(clampedY - bottom)
 
-  Object.entries(points).forEach(([key, point]) => {
-    const dist = Math.hypot(mouseX - point.x, mouseY - point.y)
-    if (dist < minDist) {
-      minDist = dist
-      closest = key as "top" | "bottom" | "left" | "right"
-    }
-  })
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom)
 
-  return { ...points[closest], point: closest }
+  if (minDist === distLeft) return { x: left, y: clampedY }
+  if (minDist === distRight) return { x: right, y: clampedY }
+  if (minDist === distTop) return { x: clampedX, y: top }
+
+  return { x: clampedX, y: bottom }
+}
+
+export function isPointNearNodeEdge(
+  x: number,
+  y: number,
+  node: FamilyNode,
+  threshold = 8,
+): boolean {
+  const left = node.x
+  const right = node.x + NODE_WIDTH
+  const top = node.y
+  const bottom = node.y + NODE_HEIGHT
+
+  const inside =
+    x >= left && x <= right &&
+    y >= top && y <= bottom
+
+  if (!inside) return false
+
+  return (
+    Math.abs(x - left) <= threshold ||
+    Math.abs(x - right) <= threshold ||
+    Math.abs(y - top) <= threshold ||
+    Math.abs(y - bottom) <= threshold
+  )
 }
 
 export const NODE_WIDTH_CONST = NODE_WIDTH
 export const NODE_HEIGHT_CONST = NODE_HEIGHT
+
+export function getSnapPoints(node: FamilyNode) {
+  const { x, y, width, height } = node
+
+  const top = [
+    { x: x + width * 0.25, y },
+    { x: x + width * 0.5, y },
+    { x: x + width * 0.75, y },
+  ]
+
+  const bottom = [
+    { x: x + width * 0.25, y: y + height },
+    { x: x + width * 0.5, y: y + height },
+    { x: x + width * 0.75, y: y + height },
+  ]
+
+  const left = [
+    { x, y: y + height * 0.25 },
+    { x, y: y + height * 0.5 },
+    { x, y: y + height * 0.75 },
+  ]
+
+  const right = [
+    { x: x + width, y: y + height * 0.25 },
+    { x: x + width, y: y + height * 0.5 },
+    { x: x + width, y: y + height * 0.75 },
+  ]
+
+  const corners = [
+    { x, y },
+    { x: x + width, y },
+    { x, y: y + height },
+    { x: x + width, y: y + height },
+  ]
+
+  return [...top, ...bottom, ...left, ...right, ...corners]
+}
+
+export function renderSnapPoints(ctx: CanvasRenderingContext2D, node: FamilyNode) {
+  const points = getSnapPoints(node)
+  ctx.fillStyle = "#3b82f6" // màu điểm snap
+  points.forEach(p => {
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}

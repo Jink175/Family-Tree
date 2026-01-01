@@ -74,21 +74,26 @@ export function Toolbar() {
   }
 
   const handleDrawArrow = () => {
-    if (arrowLabel.trim()) {
-      addArrow({
-        startX: 100,
-        startY: 100,
-        endX: 300,
-        endY: 300,
-        type: arrowType,
-        color: "#64748b",
-        label: arrowLabel,
-      })
-      setArrowLabel("")
-      setArrowType("solid")
-      setIsDrawArrowOpen(false)
-    }
-  }
+  const id = addArrow({
+    startX: 150,
+    startY: 150,
+    endX: 300,
+    endY: 150,
+    type: arrowType,
+    color: "#64748b",
+  })
+
+  // ✅ SELECT ĐÚNG ARROW VỪA TẠO
+  requestAnimationFrame(() => {
+    window.dispatchEvent(
+      new CustomEvent("select-arrow", { detail: id })
+    )
+  })
+
+  setIsDrawArrowOpen(false)
+}
+
+
 
   const getOtherNodes = () => {
     if (!selectedNode) return []
