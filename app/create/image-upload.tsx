@@ -61,7 +61,7 @@ export function ImageUpload() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition ${
-          isDragging ? "border-primary bg-primary/10" : "border-border"
+          isDragging ? "border-primary bg-[#A2E8BC]" : "border-border"
         }`}
       >
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInputChange} className="hidden" />

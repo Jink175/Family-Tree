@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
+import Header from "@/components/Layout/Header";
+import Footer from "@/components/Layout/Footer";
 import  ToastProvider  from "@/components/providers/toast-provider";
+import { DM_Sans } from 'next/font/google'
+import { ThemeProvider } from 'next-themes'
+import ScrollToTop from '@/app/landpage/ScrollToTop'
+import Aoscompo from '@/utils/aos'
+const font = DM_Sans({ subsets: ['latin'] })
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,13 +34,15 @@ export default function RootLayout({
     <html lang='en'>
       <link rel='icon' href='/logo.svg' type='image/x-icon'></link>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
+        
       >
         <ToastProvider>
           <Header />
-          <main className='w-full my-15'>{children}</main>
+          <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>{children}</main>
           <Footer />
         </ToastProvider>
+          <ScrollToTop />
       </body>
     </html>
   );

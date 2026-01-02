@@ -1,30 +1,33 @@
 'use client'
-
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import React from 'react'
+import Hero from '@/app/landpage/Home/Hero'
+import Work from '@/app/landpage/Home/work'
+import TimeLine from '@/app/landpage/Home/timeline'
+import Platform from '@/app/landpage/Home/platform'
+import Portfolio from '@/app/landpage/Home/portfolio'
+import Upgrade from '@/app/landpage/Home/upgrade'
+import Perks from '@/app/landpage/Home/perks'
+import { Metadata } from 'next'
+import BrandLogo from '@/app/landpage/Home/BrandLogo'
+import GlobalReach from '@/app/landpage/Home/GlobalReach'
+import Faq from '@/app/landpage/Home/Faq'
+// export const metadata: Metadata = {
+//   title: 'CrypGo',
+// }
 
 export default function TestPage() {
-  const testConnection = async () => {
-    const { data, error } = await supabase.from('test').select('*')
-
-    if (error) {
-      alert('❌ Lỗi kết nối: ' + error.message)
-    } else {
-      alert('✅ Kết nối OK – có ' + data.length + ' dòng')
-      console.log(data)
-    }
-  }
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Test Supabase</h1>
-      <button onClick={testConnection}>
-        Test kết nối
-      </button>
-    </div>
+    <main className='bg-black max-w-7xl mx-auto px-4 py-8'>
+      <Hero />
+      <Work />
+      <GlobalReach/>
+      <TimeLine />
+      <Platform />
+      <Portfolio />
+      <Upgrade />
+      <Perks />
+      <Faq/>
+    </main>
   )
+
 }
