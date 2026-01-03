@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2, LinkIcon, Download, Upload, ArrowRight } from "lucide-react"
+import { Plus, Trash2, LinkIcon, Download, Upload, ArrowRight, Layers, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTree } from "@/lib/tree-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { saveTree } from "@/lib/storage"
+import { TEMPLATES } from "@/lib/templates"
+import { BACKGROUNDS } from "@/lib/backgrounds"
 
 export function Toolbar() {
   const {
@@ -23,10 +25,13 @@ export function Toolbar() {
     addArrow,
     deleteArrow,
     arrows,
+    setCanvasState,
   } = useTree()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isConnectOpen, setIsConnectOpen] = useState(false)
   const [isDrawArrowOpen, setIsDrawArrowOpen] = useState(false)
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false)
+  const [isBackgroundOpen, setIsBackgroundOpen] = useState(false)
   const [name, setName] = useState("")
   const [birthYear, setBirthYear] = useState("")
   const [targetNodeId, setTargetNodeId] = useState("")
@@ -36,6 +41,11 @@ export function Toolbar() {
 
   const selectedNode = getSelectedNode()
   const selectedArrow = arrows.find((a) => canvasState.selectedNodeId === a.id) // Using selectedNodeId temporarily to track selected arrow
+
+  const handleChangeBackground = (backgroundId: string) => {
+    setCanvasState({ backgroundId })
+    setIsBackgroundOpen(false)
+  }
 
   const handleAddNode = () => {
     if (name.trim()) {
@@ -92,7 +102,21 @@ export function Toolbar() {
 
   setIsDrawArrowOpen(false)
 }
-
+  const handleLoadTemplate = (templateId: string) => {
+    const template = TEMPLATES.find((t) => t.id === templateId)
+    if (template) {
+      const newTree = {
+        id: `tree-${Date.now()}`,
+        name: template.tree.name,
+        nodes: template.tree.nodes,
+        connections: template.tree.connections,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      setTreeData(newTree)
+      setIsTemplateOpen(false)
+    }
+  }
 
 
   const getOtherNodes = () => {
@@ -145,24 +169,79 @@ export function Toolbar() {
 
   return (
     <div className="flex gap-2 p-4 bg-card border-b border-border flex-wrap items-center">
+      <Dialog open={isBackgroundOpen} onOpenChange={setIsBackgroundOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="gap-2 bg-[#A2E8BC] cursor-pointer">
+            <ImageIcon className="w-4 h-4" />
+            Background
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Choose Background</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+            {BACKGROUNDS.map((bg) => (
+              <button
+                key={bg.id}
+                onClick={() => handleChangeBackground(bg.id)}
+                className={`relative rounded-lg overflow-hidden border-2 transition-all hover:border-primary ${
+                  canvasState.backgroundId === bg.id ? "border-primary" : "border-border"
+                }`}
+              >
+                <img src={bg.url || "/placeholder.svg"} alt={bg.name} className="w-full h-24 object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-white text-xs text-center px-1">{bg.name}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isTemplateOpen} onOpenChange={setIsTemplateOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="gap-2 bg-[#A2E8BC] cursor-pointer">
+            <Layers className="w-4 h-4" />
+            Templates
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Choose a Template</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            {TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleLoadTemplate(template.id)}
+                className="p-4 text-left border border-border rounded-lg hover:bg-accent transition-colors"
+              >
+                <div className="text-2xl mb-2">{template.icon}</div>
+                <h3 className="font-semibold text-sm">{template.name}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
-          <Button className="gap-2">
+          <Button variant="outline" className="gap-2 cursor-pointer bg-[#A2E8BC]">
             <Plus className="w-4 h-4" />
             Add Person
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Person</DialogTitle>
+            <DialogTitle className="text-center">Add New Person</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label className="mb-2" htmlFor="name">Name</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter name" />
             </div>
             <div>
-              <Label htmlFor="birth">Birth Year (optional)</Label>
+              <Label className="mb-2" htmlFor="birth">Birth Year (optional)</Label>
               <Input
                 id="birth"
                 type="number"
@@ -171,7 +250,7 @@ export function Toolbar() {
                 placeholder="e.g., 1980"
               />
             </div>
-            <Button onClick={handleAddNode} className="w-full">
+            <Button onClick={handleAddNode} className="w-full cursor-pointer">
               Add Person
             </Button>
           </div>
@@ -180,28 +259,19 @@ export function Toolbar() {
 
       <Dialog open={isDrawArrowOpen} onOpenChange={setIsDrawArrowOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" className="gap-2 bg-transparent">
+          <Button variant="outline" className="gap-2 cursor-pointer bg-[#A2E8BC]">
             <ArrowRight className="w-4 h-4" />
-            Draw Arrow
+            Draw Connect
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Arrow</DialogTitle>
+            <DialogTitle className="text-center">Create Arrow</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+    
             <div>
-              <Label htmlFor="arrow-label">Label (optional)</Label>
-              <Input
-                id="arrow-label"
-                value={arrowLabel}
-                onChange={(e) => setArrowLabel(e.target.value)}
-                placeholder="Enter arrow label"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="arrow-type">Line Style</Label>
+              <Label htmlFor="arrow-type" className="mb-2">Line Style</Label>
               <Select value={arrowType} onValueChange={(value) => setArrowType(value as any)}>
                 <SelectTrigger id="arrow-type">
                   <SelectValue />
@@ -214,83 +284,20 @@ export function Toolbar() {
               </Select>
             </div>
 
-            <Button onClick={handleDrawArrow} className="w-full">
+            <Button onClick={handleDrawArrow} className="w-full cursor-pointer">
               Create Arrow
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Button
-        variant="outline"
-        onClick={handleDeleteSelected}
-        disabled={!canvasState.selectedNodeId}
-        className="gap-2 bg-transparent"
-      >
-        <Trash2 className="w-4 h-4" />
-        Delete
-      </Button>
-
-      <Dialog open={isConnectOpen} onOpenChange={setIsConnectOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" disabled={!selectedNode} className="gap-2 bg-transparent">
-            <LinkIcon className="w-4 h-4" />
-            Connect
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Connection</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>From: {selectedNode?.name}</Label>
-            </div>
-
-            <div>
-              <Label htmlFor="target">To:</Label>
-              <Select value={targetNodeId} onValueChange={setTargetNodeId}>
-                <SelectTrigger id="target">
-                  <SelectValue placeholder="Select person" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getOtherNodes().map((node) => (
-                    <SelectItem key={node.id} value={node.id}>
-                      {node.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="type">Relationship Type:</Label>
-              <Select value={connectionType} onValueChange={(value) => setConnectionType(value as any)}>
-                <SelectTrigger id="type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="parent-child">Parent → Child</SelectItem>
-                  <SelectItem value="spouse">Spouse</SelectItem>
-                  <SelectItem value="sibling">Sibling</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button onClick={handleCreateConnection} className="w-full">
-              Create Connection
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <div className="ml-auto flex gap-2">
-        <Button variant="outline" onClick={handleExportJSON} className="gap-2 bg-transparent">
+        <Button variant="outline" onClick={handleExportJSON} className="gap-2 bg-[#A2E8BC] cursor-pointer">
           <Download className="w-4 h-4" />
           Export
         </Button>
 
-        <Button variant="outline" onClick={handleLoadTree} className="gap-2 bg-transparent">
+        <Button variant="outline" onClick={handleLoadTree} className="gap-2 bg-[#A2E8BC] cursor-pointer">
           <Upload className="w-4 h-4" />
           Load
         </Button>

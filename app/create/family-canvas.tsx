@@ -14,6 +14,8 @@ import {
   NODE_HEIGHT_CONST,
 } from "./family-node-renderer"
 import { drawArrow, isPointNearArrow, isPointNearEndpoint, getClosestNode } from "./arrow-renderer"
+import { BACKGROUNDS } from "@/lib/backgrounds"
+
 function getSnapPoints(node: FamilyNode) {
   const { x, y, width, height } = node
 
@@ -93,6 +95,7 @@ export function FamilyCanvas() {
   const [hoveredNodeId, setHoveredNodeId] = useState<string>()
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null)
   const [isDraggingStarted, setIsDraggingStarted] = useState(false)
+  const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null)
   const mouseDownPosRef = useRef({ x: 0, y: 0 })
 
   // Handle keyboard events for delete
@@ -118,6 +121,22 @@ export function FamilyCanvas() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedArrowId, canvasState.selectedNodeId, deleteArrow, deleteNode, selectNode])
 
+  useEffect(() => {
+    const background = BACKGROUNDS.find((bg) => bg.id === canvasState.backgroundId)
+    if (background) {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      img.src = background.url
+      img.onload = () => {
+        setBackgroundImage(img)
+      }
+      img.onerror = () => {
+        console.warn(`Failed to load background image: ${background.url}`)
+        setBackgroundImage(null)
+      }
+    }
+  }, [canvasState.backgroundId])
+
   const draw = () => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -128,26 +147,40 @@ export function FamilyCanvas() {
     const width = canvas.width
     const height = canvas.height
 
-    // Clear canvas
-    ctx.fillStyle = "#ffffff"
-    ctx.fillRect(0, 0, width, height)
+    ctx.clearRect(0, 0, width, height)
 
-    // Draw grid background
-    ctx.strokeStyle = "#f0f0f0"
-    ctx.lineWidth = 1
-    const gridSize = 20
-    for (let i = 0; i <= width; i += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(i, 0)
-      ctx.lineTo(i, height)
-      ctx.stroke()
+    if (backgroundImage) {
+      ctx.drawImage(backgroundImage, 0, 0, width, height)
+    } else {
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, width, height)
     }
-    for (let i = 0; i <= height; i += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(0, i)
-      ctx.lineTo(width, i)
-      ctx.stroke()
+
+    // Draw grid background only if no background image
+    if (backgroundImage) {
+      ctx.drawImage(backgroundImage, 0, 0, width, height)
+    } else {
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, width, height)
+
+      // chỉ vẽ grid khi KHÔNG có background
+      ctx.strokeStyle = "#f0f0f0"
+      ctx.lineWidth = 1
+      const gridSize = 20
+      for (let i = 0; i <= width; i += gridSize) {
+        ctx.beginPath()
+        ctx.moveTo(i, 0)
+        ctx.lineTo(i, height)
+        ctx.stroke()
+      }
+      for (let i = 0; i <= height; i += gridSize) {
+        ctx.beginPath()
+        ctx.moveTo(0, i)
+        ctx.lineTo(width, i)
+        ctx.stroke()
+      }
     }
+
 
     // Draw existing connections
     ctx.strokeStyle = "#94a3b8"
@@ -176,17 +209,6 @@ export function FamilyCanvas() {
           // Horizontal layout - use more horizontal control offset
           controlOffsetX = dx > 0 ? 80 : -80
           controlOffsetY = distance * 0.2
-        }
-
-        // Draw connection line based on type
-        if (connection.type === "parent-child") {
-          ctx.strokeStyle = "#3b82f6"
-        } else if (connection.type === "spouse") {
-          ctx.strokeStyle = "#f59e0b"
-          ctx.setLineDash([5, 5])
-        } else {
-          ctx.strokeStyle = "#8b5cf6"
-          ctx.setLineDash([2, 2])
         }
 
         ctx.beginPath()
@@ -269,6 +291,11 @@ export function FamilyCanvas() {
     draw()
   }, [tree, canvasState.selectedNodeId, hoveredNodeId, connectionDrawState, arrows, selectedArrowId])
 
+  useEffect(() => {
+      draw()
+  }, [backgroundImage])
+
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -316,13 +343,15 @@ export function FamilyCanvas() {
 
       // Check if clicking on arrow body
       if (isPointNearArrow(x, y, arrow)) {
-        // If clicking same arrow, deselect it
-        if (selectedArrowId === arrow.id) {
-          setSelectedArrowId(null)
-        } else {
-          // Select new arrow
-          setSelectedArrowId(arrow.id)
-        }
+        // Select arrow and prepare for dragging
+        setSelectedArrowId(arrow.id)
+        setArrowDragState({
+          isArrowDragging: false,
+          draggedArrowId: arrow.id,
+          draggedEndpoint: null, // null means dragging entire arrow
+          offsetX: x,
+          offsetY: y,
+        })
         selectNode(null)
         arrowClicked = true
         break
@@ -349,27 +378,28 @@ export function FamilyCanvas() {
           currentX: x,
           currentY: y,
         })
-        selectNode(null)
+        // Keep node selected if it was already selected, otherwise select it
+        if (canvasState.selectedNodeId !== clickedNode.id) {
+          selectNode(clickedNode.id)
+        }
         setSelectedArrowId(null)
         return
       }
 
-      // If clicking same node that's already selected, deselect it
-      if (canvasState.selectedNodeId === clickedNode.id) {
-        selectNode(null)
-        setSelectedArrowId(null)
-      } else {
-        // Select new node but don't start dragging yet
+      // Always prepare for dragging when clicking on a node
+      // Select the node if not already selected
+      if (canvasState.selectedNodeId !== clickedNode.id) {
         selectNode(clickedNode.id)
-        setSelectedArrowId(null)
-        // Prepare for potential drag
-        setDragState({
-          isDragging: false,
-          draggedNodeId: clickedNode.id,
-          offsetX: x - clickedNode.x,
-          offsetY: y - clickedNode.y,
-        })
       }
+      setSelectedArrowId(null)
+      
+      // Prepare for potential drag
+      setDragState({
+        isDragging: false,
+        draggedNodeId: clickedNode.id,
+        offsetX: x - clickedNode.x,
+        offsetY: y - clickedNode.y,
+      })
       return
     }
 
@@ -399,6 +429,14 @@ export function FamilyCanvas() {
         setDragState({
           ...dragState,
           isDragging: true,
+        })
+      }
+      
+      // Start dragging arrow if one is prepared
+      if (arrowDragState.draggedArrowId && !arrowDragState.isArrowDragging && arrowDragState.draggedEndpoint === null) {
+        setArrowDragState({
+          ...arrowDragState,
+          isArrowDragging: true,
         })
       }
     }
@@ -466,16 +504,23 @@ export function FamilyCanvas() {
         }
       } else {
         // Drag entire arrow
-        const centerX = (arrow.startX + arrow.endX) / 2
-        const centerY = (arrow.startY + arrow.endY) / 2
-        const dx = x - arrowDragState.offsetX - centerX
-        const dy = y - arrowDragState.offsetY - centerY
+        const dx = x - arrowDragState.offsetX
+        const dy = y - arrowDragState.offsetY
 
         updateArrow(arrow.id, {
           startX: arrow.startX + dx,
           startY: arrow.startY + dy,
           endX: arrow.endX + dx,
           endY: arrow.endY + dy,
+          startNodeId: undefined,
+          endNodeId: undefined,
+        })
+        
+        // Update offset for next move
+        setArrowDragState({
+          ...arrowDragState,
+          offsetX: x,
+          offsetY: y,
         })
       }
     }

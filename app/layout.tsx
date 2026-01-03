@@ -34,7 +34,7 @@ export default function RootLayout({
     <html lang='en'>
       <link rel='icon' href='/logo.svg' type='image/x-icon'></link>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black `}
         
       >
         <ToastProvider>

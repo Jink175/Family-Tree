@@ -8,7 +8,7 @@ import { PropertiesPanel } from "./properties-panel"
 export default function Home() {
   return (
     <TreeProvider>
-      <div className="flex h-screen flex-col">
+      <div className="flex h-screen flex-col mt-30">
         <Toolbar />
         <div className="flex flex-1 gap-0 overflow-hidden">
           <div className="flex-1">

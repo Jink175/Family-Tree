@@ -84,7 +84,7 @@ const Header: React.FC = () => {
           </nav>
           <div className='sm:flex hidden gap-4'>
             <Dialog>
-              <DialogTrigger className='bg-transparent border border-primary text-[#2D6A4F] px-4 py-2 rounded-lg hover:bg-[#a2e8bc] hover:text-white'>
+              <DialogTrigger className='bg-transparent border border-primary text-[#2D6A4F] px-4 py-2 rounded-lg hover:bg-[#A2E8BC] hover:text-white'>
                 Sign In
               </DialogTrigger>
               <DialogContent className='bg-[#0d121c]'>
@@ -92,7 +92,7 @@ const Header: React.FC = () => {
               </DialogContent>
             </Dialog>
             <Dialog>
-              <DialogTrigger className='bg-[#a2e8bc] text-white px-4 py-2 rounded-lg hover:bg-transparent hover:text-[#2D6A4F] border border-primary'>
+              <DialogTrigger className='bg-[#A2E8BC] text-white px-4 py-2 rounded-lg hover:bg-transparent hover:text-[#2D6A4F] border border-primary'>
                 Sign Up
               </DialogTrigger>
               <DialogContent className='bg-[#0d121c]'>

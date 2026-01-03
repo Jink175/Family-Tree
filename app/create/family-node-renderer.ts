@@ -48,77 +48,62 @@ export function renderNodeOnCanvas(
   ctx.fill()
   ctx.stroke()
 
-  // Draw image if exists, otherwise avatar with initials
+  const centerX = node.x + NODE_WIDTH / 2
+  const avatarRadius = 18
+  const avatarY = node.y + 22
+
   if (node.image) {
-    // Draw image as avatar
     const img = new Image()
     img.onload = () => {
       ctx.save()
       ctx.beginPath()
-      ctx.arc(node.x + 20, node.y + 20, 16, 0, Math.PI * 2)
+      ctx.arc(centerX, avatarY, avatarRadius, 0, Math.PI * 2)
       ctx.clip()
-      ctx.drawImage(img, node.x + 4, node.y + 4, 32, 32)
+      ctx.drawImage(
+        img,
+        centerX - avatarRadius,
+        avatarY - avatarRadius,
+        avatarRadius * 2,
+        avatarRadius * 2
+      )
       ctx.restore()
     }
     img.src = node.image
   } else {
-    // Draw avatar background
     ctx.fillStyle = "#e0e7ff"
     ctx.beginPath()
-    ctx.arc(node.x + 20, node.y + 20, 16, 0, Math.PI * 2)
+    ctx.arc(centerX, avatarY, avatarRadius, 0, Math.PI * 2)
     ctx.fill()
 
-    // Draw initials
     const initials = node.name
       .split(" ")
-      .map((n) => n[0])
+      .map(n => n[0])
       .join("")
       .toUpperCase()
+
     ctx.fillStyle = "#4f46e5"
     ctx.font = "bold 12px sans-serif"
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
-    ctx.fillText(initials, node.x + 20, node.y + 20)
+    ctx.fillText(initials, centerX, avatarY)
   }
 
-  // Draw name
+  // ===== Name =====
   ctx.fillStyle = "#1f2937"
-  ctx.font = "bold 11px sans-serif"
-  ctx.textAlign = "left"
+  ctx.font = "bold 12px sans-serif"
+  ctx.textAlign = "center"
   ctx.textBaseline = "top"
 
-  // Truncate long names
   let displayName = node.name
-  if (displayName.length > 14) {
-    displayName = displayName.substring(0, 11) + "..."
-  }
-  ctx.fillText(displayName, node.x + 42, node.y + 10)
-
-  // Draw years info
-  if (node.birthYear || node.deathYear) {
-    ctx.font = "9px sans-serif"
-    ctx.fillStyle = "#6b7280"
-    const yearText = node.birthYear
-      ? `${node.birthYear}${node.deathYear ? "-" + node.deathYear : ""}`
-      : node.deathYear
-        ? `† ${node.deathYear}`
-        : ""
-    if (yearText) {
-      ctx.fillText(yearText, node.x + 42, node.y + 27)
-    }
+  if (displayName.length > 16) {
+    displayName = displayName.substring(0, 13) + "..."
   }
 
-  // Draw relationship indicator
-  const relationshipColor: Record<string, string> = {
-    parent: "#ef4444",
-    child: "#3b82f6",
-    spouse: "#f59e0b",
-    sibling: "#8b5cf6",
-  }
-  ctx.fillStyle = relationshipColor[node.relationship] || "#6b7280"
-  ctx.beginPath()
-  ctx.arc(node.x + NODE_WIDTH - 12, node.y + 12, 4, 0, Math.PI * 2)
-  ctx.fill()
+  ctx.fillText(
+    displayName,
+    centerX,
+    avatarY + avatarRadius + 8
+  )
 
   // Draw notes indicator if notes exist
   if (node.notes.trim()) {

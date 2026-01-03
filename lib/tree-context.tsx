@@ -74,6 +74,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     panX: 0,
     panY: 0,
     selectedNodeId: null,
+    backgroundId: "bg-1",
   })
 
   const [dragState, setDragState] = useState<DragState>({
@@ -257,7 +258,6 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     setArrowDragState: handleSetArrowDragState,
     getsnapPoints: getSnapPoints,
     getNearestSnapPoint: findNearestSnapPoint,
-
   }
 
   return <TreeContext.Provider value={value}>{children}</TreeContext.Provider>
