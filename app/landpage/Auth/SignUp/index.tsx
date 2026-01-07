@@ -1,104 +1,143 @@
 'use client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import SocialSignUp from '../SocialSignUp'
 import Logo from '@/components/Layout/Header/Logo'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Loader from '@/app/landpage/Common/Loader'
-const SignUp = () => {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
+import { Icon } from '@iconify/react'
 
-  const handleSubmit = (e: any) => {
+interface SignUpProps {
+  onSwitchToSignIn?: () => void
+}
+
+const SignUp: React.FC<SignUpProps> = ({ onSwitchToSignIn }) => {
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+  })
+
+  const isEmailValid = useMemo(
+    () => /\S+@\S+\.\S+/.test(form.email),
+    [form.email]
+  )
+
+  const isFormValid =
+    form.name.length > 0 && isEmailValid && form.password.length > 0
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isFormValid) return
 
     setLoading(true)
-    const data = new FormData(e.currentTarget)
-    const value = Object.fromEntries(data.entries())
-    const finalData = { ...value }
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
 
-    fetch('/api/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(finalData),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        toast.success('Successfully registered')
-        setLoading(false)
-        router.push('/signin')
-      })
-      .catch((err) => {
-        toast.error(err.message)
-        setLoading(false)
-      })
+      if (!res.ok) throw new Error('Register failed')
+
+      toast.success('Successfully registered')
+      onSwitchToSignIn?.()
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <>
-      <div className='mb-10 text-center mx-auto inline-block max-w-[160px]'>
+      <div className='mb-10 text-center mx-auto max-w-[160px]'>
         <Logo />
       </div>
-      <SocialSignUp />
-      <span className="z-1 relative my-8 block text-center before:content-[''] before:absolute before:h-px before:w-40% before:bg-border before:left-0 before:top-3 after:content-[''] after:absolute after:h-px after:w-40% after:bg-border after:top-3 after:right-0">
-        <span className='text-body-secondary relative z-10 inline-block px-3 text-base text-white'>
-          OR
-        </span>
-      </span>
+
       <form onSubmit={handleSubmit}>
-        <div className='mb-[22px]'>
+        {/* Name */}
+        <div className='mb-5'>
           <input
             type='text'
             placeholder='Name'
-            name='name'
-            required
-            className='w-full rounded-md border border-border border-solid bg-transparent px-5 py-3 text-base text-dark outline-hidden transition placeholder:text-grey focus:border-primary focus-visible:shadow-none text-white dark:focus:border-primary'
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className='w-full rounded-md border bg-transparent px-5 py-3 text-white
+              border-border focus:border-primary outline-none transition'
           />
         </div>
-        <div className='mb-[22px]'>
+
+        {/* Email */}
+        <div className='mb-5'>
           <input
             type='email'
             placeholder='Email'
-            name='email'
-            required
-            className='w-full rounded-md border border-border border-solid bg-transparent px-5 py-3 text-base text-dark outline-hidden transition placeholder:text-grey focus:border-primary focus-visible:shadow-none text-white dark:focus:border-primary'
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className={`w-full rounded-md border bg-transparent px-5 py-3 text-white
+              outline-none transition
+              ${
+                form.email && !isEmailValid
+                  ? 'border-red-500 focus:border-red-500'
+                  : 'border-border focus:border-primary'
+              }`}
           />
+          {form.email && !isEmailValid && (
+            <p className='mt-1 text-sm text-red-500'>
+              Email must contain @
+            </p>
+          )}
         </div>
-        <div className='mb-[22px]'>
+
+        {/* Password */}
+        <div className='mb-5'>
           <input
             type='password'
             placeholder='Password'
-            name='password'
-            required
-            className='w-full rounded-md border border-border border-solid bg-transparent px-5 py-3 text-base text-dark outline-hidden transition placeholder:text-grey focus:border-primary focus-visible:shadow-none text-white dark:focus:border-primary'
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className='w-full rounded-md border bg-transparent px-5 py-3 text-white
+              border-border focus:border-primary outline-none transition'
           />
         </div>
-        <div className='mb-9'>
-          <button
-            type='submit'
-            className='flex w-full items-center text-lg font-medium justify-center rounded-md bg-[#a2e8bc] px-5 py-3 text-black  transition duration-300 ease-in-out hover:bg-transparent hover:text-[#2D6A4F] border-primary border '>
-            Sign Up {loading && <Loader />}
-          </button>
+        {/* Again Password */}
+        <div className='mb-6'>
+          <input
+            type='Again password'
+            placeholder='Again Password'
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className='w-full rounded-md border bg-transparent px-5 py-3 text-white
+              border-border focus:border-primary outline-none transition'
+          />
         </div>
+
+        <button
+          type='submit'
+          disabled={!isFormValid || loading}
+          className={`flex w-full items-center justify-center rounded-md px-5 py-3
+            text-lg font-medium border border-primary transition
+            ${
+              isFormValid
+                ? 'bg-[#a2e8bc] hover:bg-transparent hover:text-[#2D6A4F]'
+                : 'bg-gray-600 cursor-not-allowed opacity-60'
+            }`}
+        >
+          Sign Up {loading && <Loader />}
+        </button>
       </form>
-      <p className='text-body-secondary mb-4 text-white text-base max-w-2xs mx-auto text-center'>
-        By creating an account you are agree with our{' '}
-        <a href='/#' className='text-[#2D6A4F] hover:underline'>
-          Privacy
-        </a>{' '}
-        and{' '}
-        <a href='/#' className='text-[#2D6A4F] hover:underline'>
-          Policy
-        </a>
-      </p>
-      <p className='text-body-secondary text-white text-base text-center'>
+
+      <p className='text-white text-center mt-4'>
         Already have an account?
-        <Link href='/' className='pl-2 text-[#2D6A4F] hover:underline'>
+        <button
+          type='button'
+          onClick={onSwitchToSignIn}
+          className='pl-2 text-[#2D6A4F] hover:underline'
+        >
           Sign In
-        </Link>
+        </button>
       </p>
     </>
   )

@@ -26,7 +26,7 @@ const TimeLine = () => {
                 We deliver <span className='text-[#2D6A4F]'>best solution</span>
               </p>
               <h2 className='text-white sm:text-5xl text-3xl font-medium lg:w-80% mx-auto mb-20'>
-                One application with multiple options to give you freedom of buying & selling
+                One application with multiple options to give you freedom of designing
               </h2>
             </div>
           </motion.div>
@@ -37,18 +37,18 @@ const TimeLine = () => {
             <div className='md:block hidden relative'>
               <div>
                 <Image
-                  src='/images/timeline/img-timeline.png'
+                  src='/timeline.jpg'
                   alt='image'
-                  width={1220}
-                  height={1000}
-                  className='w-80% mx-auto'
+                  width={600}
+                  height={400}
+                  className='w-50% mx-auto rounded-4xl'
                 />
               </div>
-              <div className='absolute lg::top-40 top-36 lg:left-0 -left-20 w-72 flex items-center gap-6'>
+              <div className='absolute lg:top-40 top-36 -left-20 w-72 flex items-center gap-6'>
                 <div className='text-right'>
-                  <h3 className='text-muted text-2xl mb-3'>Planning</h3>
+                  <h3 className='text-muted text-2xl mb-3'>Designing</h3>
                   <p className='text-lg text-muted/60'>
-                    Map the crypto projects scope with framer template
+                    Edit your images to make them clearer and sharper
                   </p>
                 </div>
                 <div className='bg-[#a2e8bc]/15 backdrop-blur-xs px-6 py-2 h-fit rounded-full'>
@@ -61,7 +61,7 @@ const TimeLine = () => {
                   />
                 </div>
               </div>
-              <div className='absolute lg:top-40 top-36 lg:right-0 -right-20 w-72 flex items-center gap-6'>
+              <div className='absolute lg:top-40 top-36 -right-20 w-72 flex items-center gap-6'>
                 <div className='bg-[#a2e8bc]/15 backdrop-blur-xs p-6 h-fit rounded-full'>
                   <Image
                     src='/images/solution/solution-icon-2.svg'
@@ -71,17 +71,17 @@ const TimeLine = () => {
                   />
                 </div>
                 <div className='text-left'>
-                  <h3 className='text-muted text-2xl mb-3'>Refinement</h3>
+                  <h3 className='text-muted text-2xl mb-3'>Unique</h3>
                   <p className='text-lg text-muted/60'>
-                  Refine & improve your crypto landing page
+                  Add textured backgrounds & frame your images in unique ways
                   </p>
                 </div>
               </div>
-              <div className='absolute lg:bottom-48 bottom-36 lg:left-0 -left-20 w-72 flex items-center gap-6'>
+              <div className='absolute lg:bottom-48 bottom-36 -left-20 w-72 flex items-center gap-6'>
                 <div className='text-right'>
-                  <h3 className='text-muted text-2xl mb-3'>Prototype</h3>
+                  <h3 className='text-muted text-2xl mb-3'>Collaboration</h3>
                   <p className='text-lg text-muted/60'>
-                  Build crypto website test for your product
+                  Grant access based on Edit or View-only levels
                   </p>
                 </div>
                 <div className='bg-[#a2e8bc]/15 backdrop-blur-xs px-6 py-2 h-fit rounded-full'>
@@ -94,7 +94,7 @@ const TimeLine = () => {
                   />
                 </div>
               </div>
-              <div className='absolute lg:bottom-48 bottom-36 lg:right-0 -right-20 w-72 flex items-center gap-6'>
+              <div className='absolute lg:bottom-48 bottom-36 -right-20 w-72 flex items-center gap-6'>
                 <div className='bg-[#a2e8bc]/15 backdrop-blur-xs px-6 py-2 h-fit rounded-full'>
                   <Image
                     src='/images/solution/solution-icon-4.svg'
@@ -106,10 +106,10 @@ const TimeLine = () => {
                 </div>
                 <div className='text-left'>
                   <h3 className='text-muted text-nowrap text-2xl mb-3'>
-                    Support
+                    Access
                   </h3>
                   <p className='text-lg text-muted/60'>
-                  Deploy product live and ensure expert support
+                    Access your designs from any device
                   </p>
                 </div>
               </div>

@@ -22,15 +22,15 @@ const Work = () => {
   const services = [
     {
       icon: '/images/chooseus/chooseus-icon-1.svg',
-      text: 'Designed for crypto trading platforms',
+      text: 'Designed for Family Tree platforms',
     },
     {
       icon: '/images/chooseus/chooseus-icon-2.svg',
-      text: 'Kickstart your crypto website today',
+      text: 'Kickstart your Family Tree website today',
     },
     {
       icon: '/images/chooseus/chooseus-icon-3.svg',
-      text: 'Launch your blockchain platform today',
+      text: 'Launch your graphy platform today',
     },
   ]
 
@@ -43,10 +43,10 @@ const Work = () => {
             className='lg:col-span-7 col-span-12'>
             <div className='flex flex-col gap-3'>
               <p className="text-white font-medium">
-                Why choose <span className='text-[#2D6A4F]'>crypto</span>
+                Why choose <span className='text-[#2D6A4F]'>Family Tree</span>
               </p>
               <h2 className='sm:text-5xl text-3xl text-white lg:w-full md:w-70% font-medium'>
-                Features of the crypto framer mobile application
+                Features of the Family Tree framer mobile application
               </h2>
             </div>
             <div className='grid md:grid-cols-2 gap-7 mt-11'>
@@ -68,11 +68,11 @@ const Work = () => {
           <motion.div {...TopAnimation} className='lg:col-span-5 col-span-12'>
             <div className='2xl:-mr-40 mt-9 flex justify-center'>
               <Image
-                src='/images/work/img-work-with-us.png'
+                src='/work.jpg'
                 alt='image'
-                width={600}
-                height={425}
-                className='lg:w-full'
+                width={400}
+                height={225}
+                className=' rounded-2xl'
               />
             </div>
           </motion.div>

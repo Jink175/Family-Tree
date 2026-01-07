@@ -20,7 +20,7 @@ export const GlobalReachData = [
         id: 4,
         count: 22,
         prefix: "$",
-        postfix:"B+",
-        title: "Trade volume"
+        postfix:"M+",
+        title: "Value volume"
     },
 ]

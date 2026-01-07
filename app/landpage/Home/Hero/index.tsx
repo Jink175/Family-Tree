@@ -2,9 +2,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import BuyCrypto from './buy-form'
-import SellCrypto from './sell-form'
-import CardSlider from './slider'
+// import BuyCrypto from './buy-form'
+// import SellCrypto from './sell-form'
+// import CardSlider from './slider'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Icon } from '@iconify/react/dist/iconify.js'
 import BrandLogo from '../BrandLogo'
@@ -54,7 +54,7 @@ const Hero = () => {
 
   return (
     <section
-      className='relative py-24 pt-48 overflow-hidden z-1'
+      className='relative pt-48 overflow-hidden z-1'
       id='main-banner'>
       <div className='container'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-10'>
@@ -62,13 +62,13 @@ const Hero = () => {
             <div className='flex flex-col gap-4 text-center md:text-left'>
               <div className='flex gap-6 items-center lg:justify-start justify-center'>
                 <div className='py-1.5 px-4 bg-[#A2E8BC] rounded-full border border-white/10'>
-                  <span className='text-[#2D6A4F] font-medium'>Future of crypto trading</span>
+                  <span className='text-[#2D6A4F] font-medium'>Discover your family story</span>
                 </div>
               </div>
               <h1 className='font-medium xl:text-[72px] md:text-6xl sm:text-5xl text-4xl md:text-start text-center text-white'>
-                Fast and Secure Cryptocurrency Exchange
+                Create a unique map or design your family tree
               </h1>
-              <p className='text-white'>Trade cryptocurrencies with ease, security, and advanced features on our cutting-edge platform.</p>
+              <p className='text-white'>With Family Tree generator tool, you can add as many family members as you like.</p>
             </div>
             <div className='flex items-center md:justify-start justify-center gap-8'>
               <Link href={"/#work"}
@@ -83,56 +83,18 @@ const Hero = () => {
             className=''>
             <div className='w-full h-full'>
               <Image
-                src='/images/hero/hero-banner-img.png'
+                src='/lp_1.jpg'
                 alt='Banner'
                 width={584}
                 height={582}
-                className='w-full h-full'
+                className='w-full h-full rounded-4xl'
               />
             </div>
           </motion.div>
         </div>
         <BrandLogo />
-        <CardSlider />
       </div>
 
-      {/* Modals for Buy and Sell */}
-      {isBuying && (
-        <div className='fixed top-0 left-0 w-full h-full bg-black/50 flex items-center justify-center z-50'>
-          <div
-            ref={BuyRef}
-            className='relative w-full max-w-md overflow-hidden rounded-lg px-8 pt-14 pb-8 z-999 text-center bg-dark_grey/90 backdrop-blur-md'>
-            <button
-              onClick={() => setIsBuyingOpen(false)}
-              className='absolute top-0 right-0 mr-8 mt-8 dark:invert'
-              aria-label='Close Buy Modal'>
-              <Icon
-                icon='tabler:currency-xrp'
-                className='text-white hover:text-[#2D6A4F] text-24 inline-block me-2'
-              />
-            </button>
-            <BuyCrypto />
-          </div>
-        </div>
-      )}
-      {isSelling && (
-        <div className='fixed top-0 left-0 w-full h-full bg-black/50 flex items-center justify-center z-50'>
-          <div
-            ref={SellRef}
-            className='relative w-full max-w-md overflow-hidden rounded-lg px-8 pt-14 pb-8 z-999 text-center bg-dark_grey/90 backdrop-blur-md'>
-            <button
-              onClick={() => setIsSellingOpen(false)}
-              className='absolute top-0 right-0 mr-8 mt-8 dark:invert'
-              aria-label='Close Sell Modal'>
-              <Icon
-                icon='tabler:currency-xrp'
-                className='text-white hover:text-[#2D6A4F] text-24 inline-block me-2'
-              />
-            </button>
-            <SellCrypto />
-          </div>
-        </div>
-      )}
     </section>
   )
 }

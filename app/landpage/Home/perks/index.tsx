@@ -11,10 +11,10 @@ const Perks = () => {
               Always By <span className='text-[#2D6A4F]'>your side</span>
             </p>
             <h2 className='text-white sm:text-5xl text-3xl font-medium'>
-              Be the first to use our Cryogo!
+              Benefits of Using a Genealogy Generator!
             </h2>
           </div>
-          <div className='mt-16 border border-border grid lg:grid-cols-3 sm:grid-cols-2 py-16 gap-10 px-20 rounded-3xl sm:bg-[#40916C] bg-[#2d6a4f] lg:bg-bottom bg-center bg-no-repeat'>
+          <div className='mt-16 border border-border grid lg:grid-cols-3 sm:grid-cols-2 py-16 gap-10 px-20 rounded-3xl sm:bg-black bg-[#2d6a4f] lg:bg-bottom bg-center bg-no-repeat'>
             {perksData.map((item, index) => (
               <div
                 key={index}

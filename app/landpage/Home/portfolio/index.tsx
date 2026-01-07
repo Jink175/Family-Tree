@@ -14,10 +14,11 @@ const Portfolio = () => {
             transition={{ duration: 0.6 }}
             className='lg:-ml-32'>
             <Image
-              src='/images/portfolio/img-portfolio.png'
+              src='/portfolio.jpg'
               alt='Crypto Portfolio'
               width={780}
               height={700}
+              className='rounded-4xl'
             />
           </motion.div>
 
@@ -27,15 +28,15 @@ const Portfolio = () => {
             transition={{ duration: 0.6 }}>
             <div className='flex flex-col gap-4'>
               <p className='text-white font-medium'>
-                Crypto landing page <span className='text-[#2D6A4F]'>template</span>
+                Family Tree landing page <span className='text-[#2D6A4F]'>template</span>
               </p>
               <h2 className='text-white sm:text-5xl text-3xl mb-4 font-medium'>
-                Create your cryptocurrency portfolio today
+                Create your ancestor portfolio today
               </h2>
             </div>
             <p className='text-muted/60 text-lg'>
-              Coinbase has a variety of features that make it the best place
-              to start trading.
+              Graphy has a variety of features that make it the best place
+              to start designing.
             </p>
 
             <table className='w-full sm:w-[80%] mt-10'>

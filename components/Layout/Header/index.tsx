@@ -10,7 +10,8 @@ import MobileHeaderLink from './Navigation/MobileHeaderLink'
 import Signin from '@/app/landpage/Auth/SignIn'
 import SignUp from '@/app/landpage/Auth/SignUp'
 import { useTheme } from 'next-themes'
-import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Icon } from '@iconify/react/dist/iconify.js'
 
 const Header: React.FC = () => {
@@ -76,7 +77,7 @@ const Header: React.FC = () => {
         }`}>
       <div className='lg:py-0 py-2 max-w-7xl mx-auto px-4 flex items-center justify-between'>
         <div className='container px-4 flex items-center justify-between'>
-          <Logo />
+          <Logo/>
           <nav className='hidden lg:flex grow items-center gap-8 justify-center'>
             {headerData.map((item, index) => (
               <HeaderLink key={index} item={item} />
@@ -84,21 +85,31 @@ const Header: React.FC = () => {
           </nav>
           <div className='sm:flex hidden gap-4'>
             <Dialog>
-              <DialogTrigger className='bg-transparent border border-primary text-[#2D6A4F] px-4 py-2 rounded-lg hover:bg-[#A2E8BC] hover:text-white'>
+              <DialogTrigger className='cursor-pointer bg-transparent border border-primary text-[#2D6A4F] px-4 py-2 rounded-lg hover:bg-[#A2E8BC] hover:text-white'>
                 Sign In
               </DialogTrigger>
+
               <DialogContent className='bg-[#0d121c]'>
+                <VisuallyHidden>
+                  <DialogTitle>Sign In</DialogTitle>
+                </VisuallyHidden>
                 <Signin />
               </DialogContent>
             </Dialog>
+
             <Dialog>
-              <DialogTrigger className='bg-[#A2E8BC] text-white px-4 py-2 rounded-lg hover:bg-transparent hover:text-[#2D6A4F] border border-primary'>
+              <DialogTrigger className='cursor-pointer bg-[#A2E8BC] text-white px-4 py-2 rounded-lg hover:bg-transparent hover:text-[#2D6A4F] border border-primary'>
                 Sign Up
               </DialogTrigger>
+
               <DialogContent className='bg-[#0d121c]'>
+                <VisuallyHidden>
+                  <DialogTitle>Sign Up</DialogTitle>
+                </VisuallyHidden>
                 <SignUp />
               </DialogContent>
             </Dialog>
+
           </div>
           <button
             onClick={() => setNavbarOpen(!navbarOpen)}

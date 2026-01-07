@@ -107,7 +107,7 @@ export const upgradeData: { title: string }[] = [
   { title: "A fraction of the cost" },
   { title: "Powerful in performance" },
   { title: "More durable" },
-  { title: "Designed for crypto" },
+  { title: "Designed for family tree" },
   { title: "Easier to use" },
   { title: " 100% free framer template" },
 ];
@@ -127,13 +127,13 @@ export const perksData: {
   {
     icon: "/images/perks/peak-icon-2.svg",
     title: "Community",
-    text: "Join the conversations on our worldwide OKEx communities",
+    text: "Join the conversations on our worldwide communities",
     space: "lg:mt-14",
   },
   {
     icon: "/images/perks/peak-icon-3.svg",
     title: "Academy",
-    text: "Learn blockchain and<br /> crypto for free.",
+    text: "Learn professional and<br /> design for free.",
     space: "lg:mt-4",
   },
 ];

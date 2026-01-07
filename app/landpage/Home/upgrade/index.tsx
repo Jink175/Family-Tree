@@ -8,9 +8,9 @@ const Upgrade = () => {
       <div className='container px-4'>
         <div className='grid lg:grid-cols-2 gap-10 items-center'>
           <div>
-            <p className='text-white font-medium'>Crypgo <span className='text-[#2D6A4F]'>upgrade</span></p>
+            <p className='text-white font-medium'>Family Tree <span className='text-[#2D6A4F]'>upgrade</span></p>
             <h2 className='text-white sm:text-5xl text-3xl  font-medium mb-5'>
-              Upgrade your crypto business
+              Upgrade your Family Tree
             </h2>
             <p className='text-muted/60 text-lg mb-7'>
               Get faster, safer, more affordable cloud object storage with
@@ -37,11 +37,11 @@ const Upgrade = () => {
           <div>
             <div className='ml-0 lg:ml-7'>
               <Image
-                src='/images/upgrade/img-upgrade.png'
+                src='/upgrade.png'
                 alt='image'
                 width={625}
                 height={580}
-                className='-mr-5'
+                className='-mr-5 rounded-2xl'
               />
             </div>
           </div>
