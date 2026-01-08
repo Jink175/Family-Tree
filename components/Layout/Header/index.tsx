@@ -1,170 +1,80 @@
 'use client'
+
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
-import { headerData } from './Navigation/menuData'
+import { useEffect, useState } from 'react'
 import Logo from './Logo'
-import Image from 'next/image'
 import HeaderLink from './Navigation/HeaderLink'
-import MobileHeaderLink from './Navigation/MobileHeaderLink'
-import Signin from '@/app/landpage/Auth/SignIn'
-import SignUp from '@/app/landpage/Auth/SignUp'
-import { useTheme } from 'next-themes'
-import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
-import { Icon } from '@iconify/react/dist/iconify.js'
+import { headerData } from './Navigation/menuData'
 
 const Header: React.FC = () => {
-  const pathUrl = usePathname()
-  const { theme, setTheme } = useTheme()
-
-  const [navbarOpen, setNavbarOpen] = useState(false)
+  const pathname = usePathname()
   const [sticky, setSticky] = useState(false)
-  const [isSignInOpen, setIsSignInOpen] = useState(false)
-  const [isSignUpOpen, setIsSignUpOpen] = useState(false)
-
-  const navbarRef = useRef<HTMLDivElement>(null)
-  const signInRef = useRef<HTMLDivElement>(null)
-  const signUpRef = useRef<HTMLDivElement>(null)
-  const mobileMenuRef = useRef<HTMLDivElement>(null)
-
-  const handleScroll = () => {
-    setSticky(window.scrollY >= 80)
-  }
-
-  const handleClickOutside = (event: MouseEvent) => {
-    if (
-      signInRef.current &&
-      !signInRef.current.contains(event.target as Node)
-    ) {
-      setIsSignInOpen(false)
-    }
-    if (
-      signUpRef.current &&
-      !signUpRef.current.contains(event.target as Node)
-    ) {
-      setIsSignUpOpen(false)
-    }
-    if (
-      mobileMenuRef.current &&
-      !mobileMenuRef.current.contains(event.target as Node) &&
-      navbarOpen
-    ) {
-      setNavbarOpen(false)
-    }
-  }
+  const [navbarOpen, setNavbarOpen] = useState(false)
 
   useEffect(() => {
+    const handleScroll = () => {
+      setSticky(window.scrollY >= 80)
+    }
     window.addEventListener('scroll', handleScroll)
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [navbarOpen, isSignInOpen, isSignUpOpen])
-
-  useEffect(() => {
-    if (isSignInOpen || isSignUpOpen || navbarOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-  }, [isSignInOpen, isSignUpOpen, navbarOpen])
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
     <header
-      className={`fixed top-0 z-40 w-full pb-5 transition-all bg-black duration-300 ${sticky ? ' shadow-lg bg-black pt-5' : 'shadow-none pt-7'
-        }`}>
-      <div className='lg:py-0 py-2 max-w-7xl mx-auto px-4 flex items-center justify-between'>
-        <div className='container px-4 flex items-center justify-between'>
-          <Logo/>
-          <nav className='hidden lg:flex grow items-center gap-8 justify-center'>
-            {headerData.map((item, index) => (
-              <HeaderLink key={index} item={item} />
-            ))}
-          </nav>
-          <div className='sm:flex hidden gap-4'>
-            <Dialog>
-              <DialogTrigger className='cursor-pointer bg-transparent border border-primary text-[#2D6A4F] px-4 py-2 rounded-lg hover:bg-[#A2E8BC] hover:text-white'>
-                Sign In
-              </DialogTrigger>
+      className={`fixed top-0 z-40 w-full transition-all duration-300
+        ${sticky ? 'bg-black shadow-lg pt-5' : 'bg-black pt-7'}`}
+    >
+      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
+        {/* Logo */}
+        <Logo />
 
-              <DialogContent className='bg-[#0d121c]'>
-                <VisuallyHidden>
-                  <DialogTitle>Sign In</DialogTitle>
-                </VisuallyHidden>
-                <Signin />
-              </DialogContent>
-            </Dialog>
+        {/* Desktop menu */}
+        <nav className="hidden lg:flex items-center gap-8">
+          {headerData.map((item, index) => (
+            <HeaderLink key={index} item={item} />
+          ))}
+        </nav>
 
-            <Dialog>
-              <DialogTrigger className='cursor-pointer bg-[#A2E8BC] text-white px-4 py-2 rounded-lg hover:bg-transparent hover:text-[#2D6A4F] border border-primary'>
-                Sign Up
-              </DialogTrigger>
-
-              <DialogContent className='bg-[#0d121c]'>
-                <VisuallyHidden>
-                  <DialogTitle>Sign Up</DialogTitle>
-                </VisuallyHidden>
-                <SignUp />
-              </DialogContent>
-            </Dialog>
-
-          </div>
-          <button
-            onClick={() => setNavbarOpen(!navbarOpen)}
-            className='block lg:hidden p-2 rounded-lg'
-            aria-label='Toggle mobile menu'>
-            <span className='block w-6 h-0.5 bg-white'></span>
-            <span className='block w-6 h-0.5 bg-white mt-1.5'></span>
-            <span className='block w-6 h-0.5 bg-white mt-1.5'></span>
-          </button>
+        {/* Login button */}
+        <div className="hidden sm:block">
+          <Link
+            href="/login"
+            className="border border-primary text-[#2D6A4F]
+              px-4 py-2 rounded-lg transition
+              hover:bg-[#A2E8BC] hover:text-white"
+          >
+            Log In
+          </Link>
         </div>
-        {navbarOpen && (
-          <div className='fixed top-0 left-0 w-full h-full bg-black/50 z-40' />
-        )}
-        <div
-          ref={mobileMenuRef}
-          className={`lg:hidden fixed top-0 right-0 h-full w-full bg-background shadow-lg transform transition-transform duration-300 max-w-xs ${navbarOpen ? 'translate-x-0' : 'translate-x-full'
-            } z-50`}>
-          <div className='flex items-center justify-between p-4'>
-            <h2 className='text-lg font-bold text-foreground dark:text-foreground'>
-              <Logo />
-            </h2>
 
-            {/*  */}
-            <button
-              onClick={() => setNavbarOpen(false)}
-              className="bg-[url('/images/closed.svg')] bg-no-repeat bg-contain w-5 h-5 absolute top-0 right-0 mr-8 mt-8 dark:invert"
-              aria-label='Close menu Modal'></button>
-          </div>
-          <nav className='flex flex-col items-start p-4'>
-            {headerData.map((item, index) => (
-              <MobileHeaderLink key={index} item={item} />
-            ))}
-            <div className='mt-4 flex flex-col gap-4 w-full'>
-              <Link
-                href='#'
-                className='bg-transparent border border-primary text-[#2D6A4F] px-4 py-2 rounded-lg hover:bg-blue-600 hover:text-white'
-                onClick={() => {
-                  setIsSignInOpen(true)
-                  setNavbarOpen(false)
-                }}>
-                Sign In
-              </Link>
-              <Link
-                href='#'
-                className='bg-[#a2e8bc] text-white px-4 py-2 rounded-lg hover:bg-blue-700'
-                onClick={() => {
-                  setIsSignUpOpen(true)
-                  setNavbarOpen(false)
-                }}>
-                Sign Up
-              </Link>
-            </div>
-          </nav>
-        </div>
+        {/* Mobile toggle */}
+        <button
+          onClick={() => setNavbarOpen(!navbarOpen)}
+          className="lg:hidden p-2"
+          aria-label="Toggle menu"
+        >
+          <span className="block w-6 h-0.5 bg-white"></span>
+          <span className="block w-6 h-0.5 bg-white mt-1.5"></span>
+          <span className="block w-6 h-0.5 bg-white mt-1.5"></span>
+        </button>
       </div>
+
+      {/* Mobile menu */}
+      {navbarOpen && (
+        <div className="lg:hidden fixed inset-0 bg-black/50 z-40">
+          <div className="absolute right-0 top-0 h-full w-64 bg-background p-4 z-50">
+            <Link
+              href="/login"
+              onClick={() => setNavbarOpen(false)}
+              className="block border border-primary text-[#2D6A4F]
+                px-4 py-2 rounded-lg hover:bg-[#A2E8BC] hover:text-white"
+            >
+              Log In
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   )
 }
