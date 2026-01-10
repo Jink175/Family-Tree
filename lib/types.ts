@@ -49,7 +49,7 @@ export interface CanvasState {
   panX: number
   panY: number
   selectedNodeId: string | null
-  backgroundId?: string
+  backgroundId?: string | null
 }
 
 export interface Arrow {

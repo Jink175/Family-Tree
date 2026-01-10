@@ -39,6 +39,9 @@ interface TreeContextType {
   setArrowDragState: (state: Partial<ArrowDragState>) => void
   getsnapPoints: (node: FamilyNode) => { x: number; y: number }[]
   getNearestSnapPoint: (x: number, y: number, nodes: FamilyNode[]) => { x: number; y: number; nodeId: string } | null
+  zoomIn: () => void
+  zoomOut: () => void
+  setZoom: (scale: number) => void
 }
 
 const TreeContext = createContext<TreeContextType | undefined>(undefined)
@@ -74,7 +77,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     panX: 0,
     panY: 0,
     selectedNodeId: null,
-    backgroundId: "bg-1",
+    backgroundId: null,
   })
 
   const [dragState, setDragState] = useState<DragState>({
@@ -234,6 +237,26 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     }))
   }, [])
 
+  const zoomIn = () => {
+    setCanvasState(prev => ({ 
+      ...prev, 
+      scale: Math.min(5, prev.scale * 1.2) // Limit max zoom to 5x
+    }))
+  }
+
+  const zoomOut = () => {
+    setCanvasState(prev => ({ 
+      ...prev, 
+      scale: Math.max(0.1, prev.scale / 1.2) // Limit min zoom to 0.1x
+    }))
+  }
+
+  const setZoom = (scale: number) => {
+    setCanvasState(prev => ({ ...prev, scale }))
+  }
+
+
+
   const value: TreeContextType = {
     tree,
     canvasState,
@@ -255,9 +278,13 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     addArrow,
     updateArrow,
     deleteArrow,
+    zoomIn,
+    zoomOut,
+    setZoom,
     setArrowDragState: handleSetArrowDragState,
     getsnapPoints: getSnapPoints,
     getNearestSnapPoint: findNearestSnapPoint,
+
   }
 
   return <TreeContext.Provider value={value}>{children}</TreeContext.Provider>

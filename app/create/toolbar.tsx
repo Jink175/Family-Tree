@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2, LinkIcon, Download, Upload, ArrowRight, Layers, ImageIcon } from "lucide-react"
+import { Plus, Minus, Download, Upload, ArrowRight, Layers, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTree } from "@/lib/tree-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -26,6 +26,9 @@ export function Toolbar() {
     deleteArrow,
     arrows,
     setCanvasState,
+    zoomIn, 
+    zoomOut,
+    setZoom,
   } = useTree()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isConnectOpen, setIsConnectOpen] = useState(false)
@@ -167,6 +170,21 @@ export function Toolbar() {
     URL.revokeObjectURL(url)
   }
 
+  const handleExportPNG = () => {
+    const canvas = document.getElementById("family-canvas") as HTMLCanvasElement
+    if (!canvas) {
+      alert("Canvas not found")
+      return
+    }
+
+    const dataURL = canvas.toDataURL("image/png")
+    const link = document.createElement("a")
+    link.href = dataURL
+    link.download = `${tree.name || "family-tree"}.png`
+    link.click()
+  }
+
+
   return (
     <div className="flex gap-2 p-4 bg-card border-b border-border flex-wrap items-center">
       <Dialog open={isBackgroundOpen} onOpenChange={setIsBackgroundOpen}>
@@ -178,18 +196,18 @@ export function Toolbar() {
         </DialogTrigger>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Choose Background</DialogTitle>
+            <DialogTitle className="text-center">Choose Background</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-4 gap-3 max-h-96 overflow-y-auto">
             {BACKGROUNDS.map((bg) => (
               <button
                 key={bg.id}
                 onClick={() => handleChangeBackground(bg.id)}
-                className={`relative rounded-lg overflow-hidden border-2 transition-all hover:border-primary ${
+                className={`relative rounded-lg cursor-pointer overflow-hidden border-2 transition-all hover:border-primary ${
                   canvasState.backgroundId === bg.id ? "border-primary" : "border-border"
                 }`}
               >
-                <img src={bg.url || "/placeholder.svg"} alt={bg.name} className="w-full h-24 object-cover" />
+                <img src={bg.src || "/placeholder.svg"} alt={bg.name} className="w-full h-24 object-cover" />
                 <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
                   <span className="text-white text-xs text-center px-1">{bg.name}</span>
                 </div>
@@ -207,14 +225,14 @@ export function Toolbar() {
         </DialogTrigger>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Choose a Template</DialogTitle>
+            <DialogTitle className="text-center">Choose a Template</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4">
             {TEMPLATES.map((template) => (
               <button
                 key={template.id}
                 onClick={() => handleLoadTemplate(template.id)}
-                className="p-4 text-left border border-border rounded-lg hover:bg-accent transition-colors"
+                className="p-4 text-left border cursor-pointer border-border rounded-lg hover:bg-accent transition-colors"
               >
                 <div className="text-2xl mb-2">{template.icon}</div>
                 <h3 className="font-semibold text-sm">{template.name}</h3>
@@ -290,12 +308,58 @@ export function Toolbar() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      
 
       <div className="ml-auto flex gap-2">
-        <Button variant="outline" onClick={handleExportJSON} className="gap-2 bg-[#A2E8BC] cursor-pointer">
-          <Download className="w-4 h-4" />
-          Export
-        </Button>
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#A2E8BC]">
+          <button 
+            onClick={zoomOut} 
+            className="p-1.5 hover:bg-background  cursor-pointer rounded transition-colors"
+            title="Zoom out (Ctrl + Scroll)"
+          >
+            <Minus size={16} />
+          </button>
+          <button
+            onClick={() => setZoom(1)}
+            className="min-w-15 text-sm font-medium hover:bg-background  cursor-pointer px-2 py-1 rounded transition-colors"
+            title="Reset zoom (Click to reset to 100%)"
+          >
+            {Math.round(canvasState.scale * 100)}%
+          </button>
+          <button 
+            onClick={zoomIn} 
+            className="p-1.5 hover:bg-background  cursor-pointer rounded transition-colors"
+            title="Zoom in (Ctrl + Scroll)"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2 bg-[#A2E8BC] cursor-pointer">
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-center">Export Family Tree</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-3">
+              <Button onClick={handleExportJSON} className="w-full cursor-pointer">
+                JSON
+              </Button>
+
+              <Button onClick={handleExportPNG} className="w-full cursor-pointer">
+                PNG Image
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Button variant="outline" onClick={handleLoadTree} className="gap-2 bg-[#A2E8BC] cursor-pointer">
           <Upload className="w-4 h-4" />

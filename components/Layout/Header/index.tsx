@@ -67,7 +67,7 @@ const Header: React.FC = () => {
             <Link
               href="/login"
               onClick={() => setNavbarOpen(false)}
-              className="block border border-primary text-[#2D6A4F]
+              className="block border border-primary text-[#2D6A4F] 
                 px-4 py-2 rounded-lg hover:bg-[#A2E8BC] hover:text-white"
             >
               Log In

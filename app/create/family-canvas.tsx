@@ -91,25 +91,42 @@ export function FamilyCanvas() {
     deleteArrow,
     setArrowDragState,
     deleteNode,
+    setCanvasState,
   } = useTree()
   const [hoveredNodeId, setHoveredNodeId] = useState<string>()
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null)
   const [isDraggingStarted, setIsDraggingStarted] = useState(false)
   const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null)
   const mouseDownPosRef = useRef({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const [isSpacePressed, setIsSpacePressed] = useState(false)
 
-  // Handle keyboard events for delete
+  // Handle keyboard events for delete and space
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Delete selected arrow
+      const target = e.target as HTMLElement
+
+      // ● Nếu đang nhập liệu → bỏ qua
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return
+      }
+
+      if (e.key === " " || e.code === "Space") {
+        setIsSpacePressed(true)
+        e.preventDefault()
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedArrowId) {
           deleteArrow(selectedArrowId)
           setSelectedArrowId(null)
           e.preventDefault()
-        }
-        // Delete selected node
-        else if (canvasState.selectedNodeId) {
+        } else if (canvasState.selectedNodeId) {
           deleteNode(canvasState.selectedNodeId)
           selectNode(null)
           e.preventDefault()
@@ -117,8 +134,20 @@ export function FamilyCanvas() {
       }
     }
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === " " || e.code === "Space") {
+        setIsSpacePressed(false)
+        setIsPanning(false)
+        e.preventDefault()
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
   }, [selectedArrowId, canvasState.selectedNodeId, deleteArrow, deleteNode, selectNode])
 
   useEffect(() => {
@@ -126,12 +155,12 @@ export function FamilyCanvas() {
     if (background) {
       const img = new Image()
       img.crossOrigin = "anonymous"
-      img.src = background.url
+      img.src = background.src
       img.onload = () => {
         setBackgroundImage(img)
       }
       img.onerror = () => {
-        console.warn(`Failed to load background image: ${background.url}`)
+        console.warn(`Failed to load background image: ${background.src}`)
         setBackgroundImage(null)
       }
     }
@@ -147,40 +176,53 @@ export function FamilyCanvas() {
     const width = canvas.width
     const height = canvas.height
 
+    // Clear canvas
     ctx.clearRect(0, 0, width, height)
 
-    if (backgroundImage) {
-      ctx.drawImage(backgroundImage, 0, 0, width, height)
-    } else {
-      ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, width, height)
-    }
+    // Save context state
+    ctx.save()
 
-    // Draw grid background only if no background image
-    if (backgroundImage) {
-      ctx.drawImage(backgroundImage, 0, 0, width, height)
-    } else {
-      ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, width, height)
+    // Apply transformations
+    ctx.translate(canvasState.panX, canvasState.panY)
+    ctx.scale(canvasState.scale, canvasState.scale)
 
-      // chỉ vẽ grid khi KHÔNG có background
+    // === BACKGROUND ===
+    if (backgroundImage) {
+      // Khi user CHỌN background
+      const bgWidth = width / canvasState.scale
+      const bgHeight = height / canvasState.scale
+      ctx.drawImage(backgroundImage, -canvasState.panX / canvasState.scale, -canvasState.panY / canvasState.scale, bgWidth, bgHeight)
+    } else {
+      // Background mặc định khi mới load
+      ctx.fillStyle = "#ffffff"
+      const bgWidth = width / canvasState.scale
+      const bgHeight = height / canvasState.scale
+      ctx.fillRect(-canvasState.panX / canvasState.scale, -canvasState.panY / canvasState.scale, bgWidth, bgHeight)
+
+      // (tùy chọn) chỉ vẽ grid khi KHÔNG có background
       ctx.strokeStyle = "#f0f0f0"
-      ctx.lineWidth = 1
+      ctx.lineWidth = 1 / canvasState.scale
       const gridSize = 20
-      for (let i = 0; i <= width; i += gridSize) {
+
+      const startX = Math.floor(-canvasState.panX / canvasState.scale / gridSize) * gridSize
+      const startY = Math.floor(-canvasState.panY / canvasState.scale / gridSize) * gridSize
+      const endX = startX + bgWidth + gridSize
+      const endY = startY + bgHeight + gridSize
+
+      for (let i = startX; i <= endX; i += gridSize) {
         ctx.beginPath()
-        ctx.moveTo(i, 0)
-        ctx.lineTo(i, height)
+        ctx.moveTo(i, startY)
+        ctx.lineTo(i, endY)
         ctx.stroke()
       }
-      for (let i = 0; i <= height; i += gridSize) {
+
+      for (let i = startY; i <= endY; i += gridSize) {
         ctx.beginPath()
-        ctx.moveTo(0, i)
-        ctx.lineTo(width, i)
+        ctx.moveTo(startX, i)
+        ctx.lineTo(endX, i)
         ctx.stroke()
       }
     }
-
 
     // Draw existing connections
     ctx.strokeStyle = "#94a3b8"
@@ -190,11 +232,11 @@ export function FamilyCanvas() {
       const target = tree.nodes.find((n) => n.id === connection.targetId)
       if (source && target) {
         // Determine connection points based on node positions
-        const sourceX = source.x + NODE_WIDTH / 2
-        const sourceY = source.y + NODE_HEIGHT
+        const sourceX = (source as FamilyNode).x + NODE_WIDTH / 2
+        const sourceY = (source as FamilyNode).y + NODE_HEIGHT
 
-        const targetX = target.x + NODE_WIDTH / 2
-        const targetY = target.y
+        const targetX = (target as FamilyNode).x + NODE_WIDTH / 2
+        const targetY = (target as FamilyNode).y
 
         // Calculate control points for bezier curve based on distance
         const dx = targetX - sourceX
@@ -276,7 +318,24 @@ export function FamilyCanvas() {
       const isSelected = canvasState.selectedNodeId === node.id
       renderNodeOnCanvas(ctx, node, isSelected, hoveredNodeId)
     })
+
+    // Restore context state
+    ctx.restore()
   }
+  
+  // Resize canvas
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const container = containerRef.current
+    if (!canvas || !container) return
+
+    canvas.width = container.clientWidth
+    canvas.height = container.clientHeight
+    draw()
+  }, [containerRef.current?.clientWidth, containerRef.current?.clientHeight])
+
+  // Draw when state changes
+  useEffect(() => draw(), [tree, canvasState, hoveredNodeId, connectionDrawState, arrows, selectedArrowId, backgroundImage])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -295,14 +354,45 @@ export function FamilyCanvas() {
       draw()
   }, [backgroundImage])
 
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+
+    // Zoom with mouse position as anchor point
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const newScale = Math.max(0.1, Math.min(5, canvasState.scale * delta))
+    
+    // Calculate new pan to keep mouse position fixed
+    const scaleDiff = newScale - canvasState.scale
+    const newPanX = canvasState.panX - (mouseX - canvasState.panX) * (scaleDiff / canvasState.scale)
+    const newPanY = canvasState.panY - (mouseY - canvasState.panY) * (scaleDiff / canvasState.scale)
+
+    setCanvasState({
+      scale: newScale,
+      panX: newPanX,
+      panY: newPanY,
+    })
+  }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const x = (e.clientX - rect.left - canvasState.panX) / canvasState.scale
+    const y = (e.clientY - rect.top - canvasState.panY) / canvasState.scale
+
+    // Check for panning mode (space + click or right click)
+    if (isSpacePressed || e.button === 2) {
+      setIsPanning(true)
+      setPanStart({ x: e.clientX, y: e.clientY })
+      return
+    }
 
     // Store initial mouse position
     mouseDownPosRef.current = { x, y }
@@ -403,9 +493,11 @@ export function FamilyCanvas() {
       return
     }
 
-    // Click on empty space - deselect all
+    // Click on empty space - start panning with left click
     setSelectedArrowId(null)
     selectNode(null)
+    setIsPanning(true)
+    setPanStart({ x: e.clientX, y: e.clientY })
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -413,8 +505,20 @@ export function FamilyCanvas() {
     if (!canvas) return
 
     const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const x = (e.clientX - rect.left - canvasState.panX) / canvasState.scale
+    const y = (e.clientY - rect.top - canvasState.panY) / canvasState.scale
+
+    // Handle panning
+    if (isPanning) {
+      const dx = e.clientX - panStart.x
+      const dy = e.clientY - panStart.y
+      setCanvasState({
+        panX: canvasState.panX + dx,
+        panY: canvasState.panY + dy,
+      })
+      setPanStart({ x: e.clientX, y: e.clientY })
+      return
+    }
 
     // Check if mouse moved enough to start dragging (5px threshold)
     const dragThreshold = 5
@@ -462,12 +566,13 @@ export function FamilyCanvas() {
         
         if (snapPoint) {
           // Snap to node
+          const sp = snapPoint as { x: number; y: number; nodeId: string }
           updateArrow(arrow.id, {
-            startX: snapPoint.x,
-            startY: snapPoint.y,
-            startNodeId: snapPoint.nodeId,
+            startX: sp.x,
+            startY: sp.y,
+            startNodeId: sp.nodeId,
           })
-          setHoveredNodeId(snapPoint.nodeId)
+          setHoveredNodeId(sp.nodeId)
         } else {
           // Free position
           updateArrow(arrow.id, {
@@ -487,12 +592,13 @@ export function FamilyCanvas() {
         
         if (snapPoint) {
           // Snap to node
+          const sp = snapPoint as { x: number; y: number; nodeId: string }
           updateArrow(arrow.id, {
-            endX: snapPoint.x,
-            endY: snapPoint.y,
-            endNodeId: snapPoint.nodeId,
+            endX: sp.x,
+            endY: sp.y,
+            endNodeId: sp.nodeId,
           })
-          setHoveredNodeId(snapPoint.nodeId)
+          setHoveredNodeId(sp.nodeId)
         } else {
           // Free position
           updateArrow(arrow.id, {
@@ -548,6 +654,7 @@ export function FamilyCanvas() {
 
   const handleMouseUp = () => {
     setIsDraggingStarted(false)
+    setIsPanning(false)
     
     setDragState({
       isDragging: false,
@@ -597,7 +704,10 @@ export function FamilyCanvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        className="absolute top-0 left-0 cursor-move"
+        onWheel={handleWheel}
+        onContextMenu={(e) => e.preventDefault()}
+        className="absolute top-0 left-0"
+        style={{ cursor: isPanning ? 'grabbing' : (isSpacePressed ? 'grab' : 'crosshair') }}
       />
     </div>
   )

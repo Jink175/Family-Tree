@@ -24,10 +24,9 @@ export function PropertiesPanel() {
   return (
     <div className="h-full overflow-y-auto p-4 space-y-4">
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="photo">Photo</TabsTrigger>
-          <TabsTrigger value="relations">Relations</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger className="cursor-pointer" value="details">Details</TabsTrigger>
+          <TabsTrigger className="cursor-pointer" value="photo">Photo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="space-y-4">
@@ -37,7 +36,7 @@ export function PropertiesPanel() {
 
           <Card className="p-4 space-y-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name" className="mb-2">Name</Label>
               <Input
                 id="name"
                 value={selectedNode.name}
@@ -47,43 +46,26 @@ export function PropertiesPanel() {
             </div>
 
             <div>
-              <Label htmlFor="gender">Gender</Label>
+              <Label htmlFor="gender" className="mb-2">Gender</Label>
               <Select
                 value={selectedNode.gender || ""}
                 onValueChange={(value) => updateNode(selectedNode.id, { gender: value as any })}
               >
-                <SelectTrigger id="gender">
+                <SelectTrigger id="gender" className="cursor-pointer">
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="relationship">Relationship Type</Label>
-              <Select
-                value={selectedNode.relationship}
-                onValueChange={(value) => updateNode(selectedNode.id, { relationship: value as any })}
-              >
-                <SelectTrigger id="relationship">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="parent">Parent</SelectItem>
-                  <SelectItem value="child">Child</SelectItem>
-                  <SelectItem value="spouse">Spouse</SelectItem>
-                  <SelectItem value="sibling">Sibling</SelectItem>
+                  <SelectItem className="cursor-pointer" value="male">Male</SelectItem>
+                  <SelectItem className="cursor-pointer" value="female">Female</SelectItem>
+                  <SelectItem className="cursor-pointer" value="other">Gay</SelectItem>
+                  <SelectItem className="cursor-pointer" value="other">Les</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label htmlFor="birth">Birth Year</Label>
+                <Label htmlFor="birth" className="mb-2">Birth Year</Label>
                 <Input
                   id="birth"
                   type="number"
@@ -97,7 +79,7 @@ export function PropertiesPanel() {
                 />
               </div>
               <div>
-                <Label htmlFor="death">Death Year</Label>
+                <Label htmlFor="death" className="mb-2">Death Year</Label>
                 <Input
                   id="death"
                   type="number"
@@ -113,7 +95,7 @@ export function PropertiesPanel() {
             </div>
 
             <div>
-              <Label htmlFor="notes">Notes & Biography</Label>
+              <Label htmlFor="notes" className="mb-2">Notes & Biography</Label>
               <Textarea
                 id="notes"
                 value={selectedNode.notes}
@@ -136,59 +118,6 @@ export function PropertiesPanel() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="relations" className="space-y-4">
-          <div>
-            <h2 className="font-semibold mb-4">Family Connections</h2>
-          </div>
-
-          {incomingConnections.length > 0 && (
-            <Card className="p-4">
-              <h3 className="font-semibold text-sm mb-2">Connected From:</h3>
-              <div className="space-y-2">
-                {incomingConnections.map((conn) => {
-                  const sourceNode = tree.nodes.find((n) => n.id === conn.sourceId)
-                  return (
-                    <div key={conn.id} className="text-sm flex justify-between items-center">
-                      <span>
-                        <span className="font-medium">{sourceNode?.name}</span>
-                        <span className="text-muted-foreground ml-2">({conn.type})</span>
-                      </span>
-                      <Button variant="ghost" onClick={() => deleteArrow(conn.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-          )}
-
-          {outgoingConnections.length > 0 && (
-            <Card className="p-4">
-              <h3 className="font-semibold text-sm mb-2">Connected To:</h3>
-              <div className="space-y-2">
-                {outgoingConnections.map((conn) => {
-                  const targetNode = tree.nodes.find((n) => n.id === conn.targetId)
-                  return (
-                    <div key={conn.id} className="text-sm flex justify-between items-center">
-                      <span>
-                        <span className="font-medium">{targetNode?.name}</span>
-                        <span className="text-muted-foreground ml-2">({conn.type})</span>
-                      </span>
-                      <Button variant="ghost" onClick={() => deleteArrow(conn.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            </Card>
-          )}
-
-          {incomingConnections.length === 0 && outgoingConnections.length === 0 && (
-            <p className="text-sm text-muted-foreground">No family connections yet</p>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   )
