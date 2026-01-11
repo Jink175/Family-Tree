@@ -1,91 +1,85 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
 
-export interface UserProfile {
+export interface AppUser {
   id: string
-  name: string
   email: string
-  phone: string
-  password: string
+  name: string
   avatar?: string
 }
 
 interface UserContextType {
-  user: UserProfile | null
-  setUser: (user: UserProfile) => void
-  updateUser: (updates: Partial<UserProfile>) => void
+  user: AppUser | null
+  refreshUser: () => Promise<void>
+  updateUser: (updates: Partial<AppUser>) => Promise<void>
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
-const getInitialUser = (): UserProfile => {
-  if (typeof window !== "undefined") {
-    const savedUser = localStorage.getItem("userProfile")
-    if (savedUser) {
-      return JSON.parse(savedUser)
-    }
-  }
-
-  return {
-    id: `user-${Date.now()}`,
-    name: "User",
-    email: "user@example.com",
-    phone: "",
-    password: "password123",
-  }
-}
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<UserProfile | null>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [user, setUser] = useState<AppUser | null>(null)
 
-  // Load user from localStorage on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem("userProfile")
-    if (savedUser) {
-      setUserState(JSON.parse(savedUser))
-    } else {
-      // Create default user if none exists
-      const defaultUser: UserProfile = {
-        id: `user-${Date.now()}`,
-        name: "User",
-        email: "user@example.com",
-        phone: "",
-        password: "password123",
-      }
-      setUserState(defaultUser)
-      localStorage.setItem("userProfile", JSON.stringify(defaultUser))
+  // Refresh user from Supabase
+  const refreshUser = async () => {
+    const { data } = await supabase.auth.getUser()
+    const u = data.user
+    if (!u) {
+      setUser(null)
+      return
     }
-    setIsLoaded(true)
-  }, [])
-
-  const setUser = (newUser: UserProfile) => {
-    setUserState(newUser)
-    localStorage.setItem("userProfile", JSON.stringify(newUser))
-  }
-
-  const updateUser = (updates: Partial<UserProfile>) => {
-    setUserState((prev) => {
-      if (!prev) return null
-      const updated = { ...prev, ...updates }
-      localStorage.setItem("userProfile", JSON.stringify(updated))
-      return updated
+    setUser({
+      id: u.id,
+      email: u.email!,
+      name: u.user_metadata?.name || "",
+      avatar: u.user_metadata?.avatar,
     })
   }
 
-  if (!isLoaded) {
-    return <div />
+  // Update user metadata
+  const updateUser = async (updates: Partial<AppUser>) => {
+    if (!user) return
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        ...updates,
+        name: updates.name ?? user.name,
+        avatar: updates.avatar ?? user.avatar,
+      },
+    })
+
+    if (error) throw error
+
+    setUser({
+      id: data.user!.id,
+      email: data.user!.email!,
+      name: data.user!.user_metadata?.name || "",
+      avatar: data.user!.user_metadata?.avatar,
+    })
   }
 
-  return <UserContext.Provider value={{ user, setUser, updateUser }}>{children}</UserContext.Provider>
+  useEffect(() => {
+    refreshUser()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      refreshUser()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  return (
+    <UserContext.Provider value={{ user, refreshUser, updateUser }}>
+      {children}
+    </UserContext.Provider>
+  )
 }
 
 export function useUser() {
   const context = useContext(UserContext)
-  if (context === undefined) {
-    throw new Error("useUser must be used within a UserProvider")
-  }
+  if (!context) throw new Error("useUser must be used within UserProvider")
   return context
 }
