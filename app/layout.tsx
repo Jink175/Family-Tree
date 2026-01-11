@@ -6,6 +6,8 @@ import Footer from "@/components/Layout/Footer";
 import  ToastProvider  from "@/components/providers/toast-provider";
 import { DM_Sans } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
+import { UserProvider } from "@/lib/user-context"
+import { TreeProvider } from "@/lib/tree-context";
 import ScrollToTop from '@/app/landpage/ScrollToTop'
 import Aoscompo from '@/utils/aos'
 const font = DM_Sans({ subsets: ['latin'] })
@@ -37,11 +39,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black `}
         
       >
-        <ToastProvider>
+        <TreeProvider>
+          <UserProvider>
           <Header />
           <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>{children}</main>
           <Footer />
-        </ToastProvider>
+          </UserProvider>
+        </TreeProvider>
           <ScrollToTop />
       </body>
     </html>

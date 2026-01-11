@@ -6,11 +6,40 @@ import { useEffect, useState } from 'react'
 import Logo from './Logo'
 import HeaderLink from './Navigation/HeaderLink'
 import { headerData } from './Navigation/menuData'
+import { supabase } from '@/lib/supabase'
+import { User } from '@supabase/supabase-js'
+import Image from 'next/image'
+import toast from 'react-hot-toast'
 
 const Header: React.FC = () => {
   const pathname = usePathname()
   const [sticky, setSticky] = useState(false)
   const [navbarOpen, setNavbarOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    // Lấy user hiện tại khi load page
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null)
+    })
+
+    // Lắng nghe thay đổi auth
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        setUser(session?.user ?? null)
+        toast.success('Đã đăng nhập thành công 🎉')
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,15 +67,29 @@ const Header: React.FC = () => {
 
         {/* Login button */}
         <div className="hidden sm:block">
-          <Link
-            href="/login"
-            className="border border-primary text-[#2D6A4F]
-              px-4 py-2 rounded-lg transition
-              hover:bg-[#A2E8BC] hover:text-white"
-          >
-            Log In
-          </Link>
+          {!user ? (
+            <Link
+              href="/login"
+              className="border border-primary text-[#2D6A4F]
+                px-4 py-2 rounded-lg transition
+                hover:bg-[#A2E8BC] hover:text-white"
+            >
+              Log In
+            </Link>
+          ) : (
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-primary cursor-pointer">
+              <Link href="/user">
+                <Image
+                  src="/logo.jpg" // hoặc user metadata avatar sau này
+                  alt="avatar"
+                  width={40}
+                  height={40}
+                />
+              </Link>
+            </div>
+          )}
         </div>
+
 
         {/* Mobile toggle */}
         <button

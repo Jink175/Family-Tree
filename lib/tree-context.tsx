@@ -78,6 +78,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     panY: 0,
     selectedNodeId: null,
     backgroundId: null,
+    diagramName: "Untitled Diagram",
   })
 
   const [dragState, setDragState] = useState<DragState>({
@@ -115,6 +116,13 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
       if (savedArrows) {
         setArrows(JSON.parse(savedArrows))
       }
+      const savedDiagramName = localStorage.getItem("diagramName")
+      if (savedDiagramName) {
+        setCanvasState((prev) => ({
+          ...prev,
+          diagramName: savedDiagramName,
+        }))
+      }
     }
   }, [])
 
@@ -122,6 +130,10 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem("familyTreeArrows", JSON.stringify(arrows))
   }, [arrows])
+
+  useEffect(() => {
+    localStorage.setItem("diagramName", canvasState.diagramName)
+  }, [canvasState.diagramName])
 
   const addNode = useCallback((node: Omit<FamilyNode, "id">) => {
     const newNode: FamilyNode = {

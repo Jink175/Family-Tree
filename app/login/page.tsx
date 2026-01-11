@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { signIn } from 'next-auth/react'
+import { supabase } from '@/lib/supabase'
+
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -55,37 +56,39 @@ const AuthForm = () => {
 
     setLoading(true)
     try {
-      if (mode === 'signup') {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: form.name,
+        if (mode === 'signup') {
+        const { error } = await supabase.auth.signUp({
             email: form.email,
             password: form.password,
-          }),
+            options: {
+            data: {
+                name: form.name, // lưu name vào user metadata
+            },
+            },
         })
 
-        if (!res.ok) throw new Error('Register failed')
-        toast.success('Register successful')
+        if (error) throw error
+
+        toast.success('Register successful 🎉')
         setMode('signin')
-      } else {
-        const res = await signIn('credentials', {
-          email: form.email,
-          password: form.password,
-          redirect: false,
+        } else {
+        const { error } = await supabase.auth.signInWithPassword({
+            email: form.email,
+            password: form.password,
         })
 
-        if (res?.error) throw new Error(res.error)
-        toast.success('Login successful')
+        if (error) throw error
+
+        toast.success('Login successful ✅')
         router.push('/')
-      }
+        }
     } catch (err: any) {
-      toast.error(err.message)
+        toast.error(err.message)
     } finally {
-      setLoading(false)
+        setLoading(false)
     }
-  }
+    }
+
     return (
         <div className="relative w-full flex justify-center mt-30">
             {/* IMAGE */}
@@ -101,7 +104,7 @@ const AuthForm = () => {
             {/* FORM OVERLAY */}
             <div className="absolute top-1/2 left-1/2 
                 -translate-x-1/2 -translate-y-1/2
-                w-[550px] bg-black/40 backdrop-blur-md
+                w-137.5 bg-black/40 backdrop-blur-md
                 p-5 rounded-xl"
             >
                 <form onSubmit={handleSubmit}>

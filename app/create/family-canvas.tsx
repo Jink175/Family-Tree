@@ -223,7 +223,10 @@ export function FamilyCanvas() {
         ctx.stroke()
       }
     }
-
+    // ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
+    // ctx.font = "16px sans-serif"
+    // ctx.fillText(`📊 ${canvasState.diagramName}`, 16, 28)
+    
     // Draw existing connections
     ctx.strokeStyle = "#94a3b8"
     ctx.lineWidth = 2
@@ -332,7 +335,7 @@ export function FamilyCanvas() {
     canvas.width = container.clientWidth
     canvas.height = container.clientHeight
     draw()
-  }, [containerRef.current?.clientWidth, containerRef.current?.clientHeight])
+  }, [containerRef.current?.clientWidth, containerRef.current?.clientHeight, canvasState.diagramName])
 
   // Draw when state changes
   useEffect(() => draw(), [tree, canvasState, hoveredNodeId, connectionDrawState, arrows, selectedArrowId, backgroundImage])

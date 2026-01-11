@@ -41,7 +41,7 @@ export function Toolbar() {
   const [connectionType, setConnectionType] = useState<"parent-child" | "spouse" | "sibling">("parent-child")
   const [arrowLabel, setArrowLabel] = useState("")
   const [arrowType, setArrowType] = useState<"solid" | "dashed" | "dotted">("solid")
-
+  const [diagramNameInput, setDiagramNameInput] = useState(canvasState.diagramName)
   const selectedNode = getSelectedNode()
   const selectedArrow = arrows.find((a) => canvasState.selectedNodeId === a.id) // Using selectedNodeId temporarily to track selected arrow
 
@@ -184,9 +184,24 @@ export function Toolbar() {
     link.click()
   }
 
+  const handleDiagramNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value
+    setDiagramNameInput(newName)
+    setCanvasState({ diagramName: newName })
+  }
 
   return (
     <div className="flex gap-2 p-4 bg-card border-b border-border flex-wrap items-center">
+      <div className="flex items-center gap-2">
+        <Label className="text-sm font-medium">Diagram:</Label>
+        <Input
+          type="text"
+          value={diagramNameInput}
+          onChange={handleDiagramNameChange}
+          placeholder="Enter diagram name..."
+          className="h-9 w-48 bg-background"
+        />
+      </div>
       <Dialog open={isBackgroundOpen} onOpenChange={setIsBackgroundOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" className="gap-2 bg-[#A2E8BC] cursor-pointer">
