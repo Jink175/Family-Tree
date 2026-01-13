@@ -17,13 +17,37 @@ export default function ProfilePage() {
   const router = useRouter()
   const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null)
   const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null)
+  const [diagrams, setDiagrams] = useState<any[]>([])
+  const [loadingDiagrams, setLoadingDiagrams] = useState(true)
 
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
   })
-  
+
+  useEffect(() => {
+    const fetchDiagrams = async () => {
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from("family_trees")
+        .select("id, name, updated_at, thumbnail")
+        .order("updated_at", { ascending: false })
+
+      if (error) {
+        toast.error("Không tải được sơ đồ")
+        console.error(error)
+      } else {
+        setDiagrams(data || [])
+      }
+
+      setLoadingDiagrams(false)
+    }
+
+    fetchDiagrams()
+  }, [user])
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -58,7 +82,6 @@ export default function ProfilePage() {
 
     }
 
-
     // Update user info
     updateUser({
       name: formData.name,
@@ -76,6 +99,23 @@ export default function ProfilePage() {
     if (!file) return
     setNewAvatarFile(file)
     setNewAvatarPreview(URL.createObjectURL(file)) // hiển thị preview ngay
+  }
+
+  const handleDeleteDiagram = async (id: string) => {
+    const confirm = window.confirm("Bạn có chắc muốn xoá sơ đồ này?")
+    if (!confirm) return
+
+    const { error } = await supabase
+      .from("family_trees")
+      .delete()
+      .eq("id", id)
+
+    if (error) {
+      toast.error("Xoá thất bại")
+    } else {
+      toast.success("Đã xoá sơ đồ")
+      setDiagrams((prev) => prev.filter((d) => d.id !== id))
+    }
   }
 
   // LOG OUT
@@ -175,7 +215,63 @@ export default function ProfilePage() {
           </Button>
         </div>
       </Card>
-      
+      <Card className="p-8">
+        <div>
+          <h2 className="text-2xl font-bold text-center mb-8">Kho lưu trữ</h2>
+          {loadingDiagrams ? (
+            <div className="p-12 text-center">
+              <p className="text-muted-foreground">Đang tải sơ đồ...</p>
+            </div>
+          ) : diagrams.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-muted-foreground mb-4">Bạn chưa có sơ đồ nào</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {diagrams.map((diagram) => (
+                <Card
+                  key={diagram.id}
+                  className="p-4 hover:shadow-lg cursor-pointer"
+                  onClick={() => router.push(`/create?id=${diagram.id}`)}
+                >
+                  <h3 className="font-semibold truncate mb-2">
+                    {diagram.name}
+                  </h3>
+
+                  {/* 🖼️ THUMBNAIL */}
+                  {diagram.thumbnail ? (
+                    <img
+                      src={diagram.thumbnail}
+                      alt={diagram.name}
+                      className="w-full h-40 object-cover rounded border mb-2"
+                    />
+                  ) : (
+                    <div className="w-full h-40 bg-muted flex items-center justify-center text-xs text-muted-foreground rounded mb-2">
+                      Chưa có preview
+                    </div>
+                  )}
+
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Cập nhật: {new Date(diagram.updated_at).toLocaleDateString("vi-VN")}
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteDiagram(diagram.id)
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </Card>
+
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   )
 }

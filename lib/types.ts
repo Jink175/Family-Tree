@@ -21,13 +21,14 @@ export interface Connection {
 }
 
 export interface FamilyTree {
-  id: string
-  name: string
+  id?: string
   nodes: FamilyNode[]
   connections: Connection[]
-  createdAt: Date
-  updatedAt: Date
+  createdAt?: Date
+  updatedAt?: Date
 }
+
+
 
 export interface DragState {
   isDragging: boolean

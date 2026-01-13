@@ -14,6 +14,8 @@ import type {
 } from "./types"
 import { getCurrentTree } from "./storage"
 import { getSnapPoints } from "@/app/create/family-node-renderer"
+import { supabase } from "@/lib/supabase"
+import toast from "react-hot-toast"
 
 interface TreeContextType {
   tree: FamilyTree
@@ -63,9 +65,8 @@ export function findNearestSnapPoint(x: number, y: number, nodes: FamilyNode[]) 
 
 
 export function TreeProvider({ children }: { children: React.ReactNode }) {
-  const [tree, setTree] = useState<FamilyTree>({
-    id: `tree-${Date.now()}`,
-    name: "My Family Tree",
+    const [tree, setTree] = useState<FamilyTree>({
+    id: undefined,
     nodes: [],
     connections: [],
     createdAt: new Date(),
@@ -107,24 +108,55 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
   const [arrows, setArrows] = useState<Arrow[]>([])
 
   // Load tree from localStorage on mount
-  useEffect(() => {
-    const savedTree = getCurrentTree()
-    if (savedTree) {
-      setTree(savedTree)
-      // Load arrows from localStorage if available
-      const savedArrows = localStorage.getItem("familyTreeArrows")
-      if (savedArrows) {
-        setArrows(JSON.parse(savedArrows))
-      }
-      const savedDiagramName = localStorage.getItem("diagramName")
-      if (savedDiagramName) {
-        setCanvasState((prev) => ({
-          ...prev,
-          diagramName: savedDiagramName,
-        }))
-      }
-    }
-  }, [])
+  // useEffect(() => {
+  //   const savedTree = getCurrentTree()
+  //   if (savedTree) {
+  //     setTree(savedTree)
+  //     // Load arrows from localStorage if available
+  //     const savedArrows = localStorage.getItem("familyTreeArrows")
+  //     if (savedArrows) {
+  //       setArrows(JSON.parse(savedArrows))
+  //     }
+  //     const savedDiagramName = localStorage.getItem("diagramName")
+  //     if (savedDiagramName) {
+  //       setCanvasState((prev) => ({
+  //         ...prev,
+  //         diagramName: savedDiagramName,
+  //       }))
+  //     }
+  //   }
+  // }, [])
+
+  const loadTreeFromSupabase = async (treeId: string) => {
+  const { data, error } = await supabase
+    .from("family_trees")
+    .select("*")
+    .eq("id", treeId)
+    .single()
+
+  if (error) {
+    toast.error("Không tải được sơ đồ")
+    return
+  }
+
+  setTreeData({
+    id: data.id,
+    nodes: data.nodes,
+    connections: data.connections,
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+  })
+
+  setCanvasState(prev => ({
+    ...prev,
+    diagramName: data.name,
+    backgroundId: data.background_id,
+  }))
+  setArrows(data.arrows)
+
+
+}
+
 
   // Auto-save arrows to localStorage
   useEffect(() => {

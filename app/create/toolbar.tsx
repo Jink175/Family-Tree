@@ -12,6 +12,8 @@ import { saveTree } from "@/lib/storage"
 import { TEMPLATES } from "@/lib/templates"
 import { BACKGROUNDS } from "@/lib/backgrounds"
 import { useUser } from "@/lib/user-context"
+import { supabase } from "@/lib/supabase"
+import toast from "react-hot-toast"
 
 export function Toolbar() {
   const {
@@ -33,7 +35,12 @@ export function Toolbar() {
   } = useTree()
 
   const { user, updateUser } = useUser()
+  const canvas = document.getElementById("family-canvas") as HTMLCanvasElement
+  let thumbnail: string | null = null
 
+  if (canvas) {
+    thumbnail = canvas.toDataURL("image/png", 0.6) // 60% quality
+  }
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isConnectOpen, setIsConnectOpen] = useState(false)
   const [isDrawArrowOpen, setIsDrawArrowOpen] = useState(false)
@@ -45,7 +52,6 @@ export function Toolbar() {
   const [connectionType, setConnectionType] = useState<"parent-child" | "spouse" | "sibling">("parent-child")
   const [arrowLabel, setArrowLabel] = useState("")
   const [arrowType, setArrowType] = useState<"solid" | "dashed" | "dotted">("solid")
-  const [diagramNameInput, setDiagramNameInput] = useState(canvasState.diagramName)
   const selectedNode = getSelectedNode()
   const selectedArrow = arrows.find((a) => canvasState.selectedNodeId === a.id) // Using selectedNodeId temporarily to track selected arrow
   const [isSaveOpen, setIsSaveOpen] = useState(false)
@@ -115,8 +121,7 @@ export function Toolbar() {
     const template = TEMPLATES.find((t) => t.id === templateId)
     if (template) {
       const newTree = {
-        id: `tree-${Date.now()}`,
-        name: template.tree.name,
+        name: template.name,
         nodes: template.tree.nodes,
         connections: template.tree.connections,
         createdAt: new Date(),
@@ -134,7 +139,7 @@ export function Toolbar() {
   }
 
   const handleSaveTree = () => {
-    const fileName = prompt("Enter a name for this family tree:", tree.name) || tree.name
+    const fileName = prompt("Enter a name for this family tree:", canvasState.diagramName) || canvasState.diagramName
     saveTree({
       ...tree,
       name: fileName,
@@ -165,32 +170,80 @@ export function Toolbar() {
     input.click()
   }
 
-  const handleSaveDiagram = () => {
-    if (!saveDiagramName.trim()) {
-      alert("Please enter a diagram name")
+  const handleSaveDiagram = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      toast.error("Bạn chưa đăng nhập")
       return
     }
 
-    if (!user) return
-
-    const diagramToSave = {
-      id: `diagram-${Date.now()}`,
-      name: saveDiagramName,
-      treeData: tree,
-      arrows: arrows,
-      backgroundId: canvasState.backgroundId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    if (!canvasState.diagramName.trim()) {
+      toast.error("Tên sơ đồ không được để trống")
+      return
     }
 
-    const currentDiagrams = user.diagrams || []
-    const updatedDiagrams = [...currentDiagrams, diagramToSave]
-    updateUser({ diagrams: updatedDiagrams })
+    const payload = {
+      name: canvasState.diagramName,
+      nodes: tree.nodes,
+      connections: tree.connections,
+      arrows,
+      background_id: canvasState.backgroundId,
+      thumbnail, // ✅ QUAN TRỌNG
+    }
 
-    alert(`Diagram "${saveDiagramName}" saved successfully!`)
-    setSaveDiagramName("")
-    setIsSaveOpen(false)
+    try {
+      // 🔹 UPDATE
+      if (tree.id) {
+        const { data, error } = await supabase
+          .from("family_trees")
+          .update(payload)
+          .eq("id", tree.id)
+          .eq("user_id", user.id) // 🔐 RẤT QUAN TRỌNG
+          .select()
+          .single()
+
+        if (error || !data) throw error
+
+        setTreeData({
+          ...tree,
+          updatedAt: new Date(data.updated_at),
+        })
+
+        toast.success("Đã cập nhật sơ đồ")
+      }
+
+      // 🔹 INSERT
+      else {
+        const { data, error } = await supabase
+          .from("family_trees")
+          .insert({
+            user_id: user.id,
+            ...payload,
+          })
+          .select()
+          .single()
+
+        if (error || !data) throw error
+
+        setTreeData({
+          ...tree,
+          id: data.id,
+          createdAt: new Date(data.created_at),
+          updatedAt: new Date(data.updated_at),
+        })
+
+        toast.success("Đã lưu sơ đồ mới")
+      }
+    } catch (err) {
+      console.error("Save diagram error:", err)
+      toast.error("Lưu sơ đồ thất bại")
+    }
   }
+
+
 
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tree, null, 2)
@@ -198,7 +251,7 @@ export function Toolbar() {
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `${tree.name || "family-tree"}.json`
+    link.download = `${canvasState.diagramName || "family-tree"}.json`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -213,13 +266,12 @@ export function Toolbar() {
     const dataURL = canvas.toDataURL("image/png")
     const link = document.createElement("a")
     link.href = dataURL
-    link.download = `${tree.name || "family-tree"}.png`
+    link.download = `${canvasState.diagramName || "family-tree"}.png`
     link.click()
   }
 
   const handleDiagramNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value
-    setDiagramNameInput(newName)
     setCanvasState({ diagramName: newName })
   }
 
@@ -227,11 +279,10 @@ export function Toolbar() {
     <div className="flex gap-2 p-4 bg-card border-b border-border flex-wrap items-center">
       <div className="flex items-center gap-2">
         <Input
-          type="text"
-          value={diagramNameInput}
-          onChange={handleDiagramNameChange}
-          placeholder="Enter diagram name..."
-          className="h-9 w-48 bg-background"
+          value={canvasState.diagramName}
+          onChange={(e) =>
+            setCanvasState({ diagramName: e.target.value })
+          }
         />
       </div>
       <Dialog open={isBackgroundOpen} onOpenChange={setIsBackgroundOpen}>
@@ -355,8 +406,6 @@ export function Toolbar() {
           </div>
         </DialogContent>
       </Dialog>
-      
-      
 
       <div className="ml-auto flex gap-2">
         {/* Zoom Controls */}
@@ -383,39 +432,15 @@ export function Toolbar() {
             <Plus size={16} />
           </button>
         </div>
-        <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="gap-2 bg-transparent cursor-pointer bg-[#A2E8BC]">
-              <Save className="w-4 h-4" />
-              Save
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Save Diagram</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="save-name">Diagram Name</Label>
-                <Input
-                  id="save-name"
-                  value={saveDiagramName}
-                  onChange={(e) => setSaveDiagramName(e.target.value)}
-                  placeholder="Enter diagram name..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSaveDiagram()
-                    }
-                  }}
-                  autoFocus
-                />
-              </div>
-              <Button onClick={handleSaveDiagram} className="w-full">
-                Save Diagram
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button
+          variant="outline"
+          className="gap-2 bg-[#A2E8BC] cursor-pointer"
+          onClick={handleSaveDiagram}
+        >
+          <Save className="w-4 h-4" />
+          Save
+        </Button>
+
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="outline" className="gap-2 bg-[#A2E8BC] cursor-pointer">
