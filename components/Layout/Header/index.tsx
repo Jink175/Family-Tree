@@ -10,36 +10,13 @@ import { supabase } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
+import { useUser } from '@/lib/user-context'
 
 const Header: React.FC = () => {
   const pathname = usePathname()
   const [sticky, setSticky] = useState(false)
   const [navbarOpen, setNavbarOpen] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
-
-  useEffect(() => {
-    // Lấy user hiện tại khi load page
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user ?? null)
-    })
-
-    // Lắng nghe thay đổi auth
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') {
-        setUser(session?.user ?? null)
-        toast.success('Đã đăng nhập thành công 🎉')
-      }
-
-      if (event === 'SIGNED_OUT') {
-        setUser(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
+  const { user } = useUser()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -67,27 +44,24 @@ const Header: React.FC = () => {
 
         {/* Login button */}
         <div className="hidden sm:block">
-          {!user ? (
-            <Link
-              href="/login"
-              className="border border-primary text-[#2D6A4F]
-                px-4 py-2 rounded-lg transition
-                hover:bg-[#A2E8BC] hover:text-white"
-            >
-              Log In
-            </Link>
-          ) : (
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-primary cursor-pointer">
-              <Link href="/user">
+          {user ? (
+            <Link href="/user">
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-primary">
                 <Image
-                  src="/logo.jpg" // hoặc user metadata avatar sau này
+                  src={user.avatar || '/logo.jpg'}
                   alt="avatar"
                   width={40}
                   height={40}
+                  className="object-cover"
                 />
-              </Link>
-            </div>
+              </div>
+            </Link>
+          ) : (
+            <Link href="/login" className="border px-4 py-2 rounded-lg">
+              Log In
+            </Link>
           )}
+
         </div>
 
 

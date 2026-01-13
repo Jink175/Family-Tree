@@ -23,7 +23,7 @@ export default function ProfilePage() {
     name: "",
     email: "",
   })
-
+  
   useEffect(() => {
     if (user) {
       setFormData({
@@ -41,25 +41,23 @@ export default function ProfilePage() {
     let avatarUrl = user?.avatar || null
 
     if (newAvatarFile && user) {
-      try {
-        const fileExt = newAvatarFile.name.split('.').pop()
-        const fileName = `${user.id}.${fileExt}`
-        const filePath = fileName
+      const fileExt = newAvatarFile.name.split(".").pop()
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
 
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, newAvatarFile, { upsert: true })
 
-        if (uploadError) throw uploadError
+      await supabase.storage
+        .from("avatars")
+        .upload(fileName, newAvatarFile, { upsert: true })
 
-        const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-        avatarUrl = data.publicUrl || avatarUrl
-      } catch (err: any) {
-        console.error(err)
-        toast.error('Upload avatar failed')
-        return
-      }
+      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
+      avatarUrl = `${data.publicUrl}?t=${Date.now()}`
+      updateUser({
+        name: formData.name,
+        avatar: avatarUrl,
+      })
+
     }
+
 
     // Update user info
     updateUser({
@@ -73,43 +71,12 @@ export default function ProfilePage() {
     toast.success('Profile updated')
   }
 
-
-  // Upload avatar
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !user) return
-
-    try {
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${user.id}.${fileExt}`
-      const filePath = fileName
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
-
-      if (!data?.publicUrl) throw new Error("No public URL")
-
-      await updateUser({ avatar: data.publicUrl })
-
-      toast.success("Avatar updated")
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "Upload failed")
-    }
-  }
-
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setNewAvatarFile(file)
     setNewAvatarPreview(URL.createObjectURL(file)) // hiển thị preview ngay
   }
-
 
   // LOG OUT
   const handleLogout = async () => {
@@ -118,7 +85,7 @@ export default function ProfilePage() {
   }
 
   if (!user) return <div>Loading...</div>
-
+  
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-8 mt-16">
       {/* Profile Card */}
@@ -126,11 +93,10 @@ export default function ProfilePage() {
         <h2 className="text-2xl font-bold mb-6 text-center">Personal Information</h2>
         <div className="space-y-6 flex flex-col md:flex-row gap-6">
           {/* Avatar */}
-          {/* Avatar */}
           <div className="flex flex-col items-center gap-4">
             {user.avatar ? (
               <img
-                src={newAvatarPreview || user.avatar || '/placeholder.svg'}
+                src={newAvatarPreview || user.avatar || '/logo.jpg'}
                 alt={user.name}
                 className="w-24 h-24 rounded-full object-cover border-2 border-border"
               />
@@ -147,7 +113,7 @@ export default function ProfilePage() {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={handleAvatarUpload}
+                  onChange={handleAvatarChange}
                 />
                 <Button size="sm" className="gap-2" asChild>
                   <span>
@@ -182,7 +148,14 @@ export default function ProfilePage() {
         <div className="flex justify-end gap-2 pt-4 relative">
           {isEditing ? (
             <>
-              <Button variant="outline" onClick={() => setIsEditing(false)} className="cursor-pointer">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditing(false)
+                  setNewAvatarFile(null)
+                  setNewAvatarPreview(null)
+                }}
+              >
                 Cancel
               </Button>
               <Button onClick={handleSaveProfile} className="gap-2 cursor-pointer">

@@ -8,6 +8,15 @@ export interface AppUser {
   email: string
   name: string
   avatar?: string
+  diagrams?: Array<{
+    id: string
+    name: string
+    treeData: any
+    arrows: any
+    backgroundId: string
+    createdAt: string
+    updatedAt: string
+  }>
 }
 
 interface UserContextType {

@@ -11,6 +11,7 @@ import { TreeProvider } from "@/lib/tree-context";
 import ScrollToTop from '@/app/landpage/ScrollToTop'
 import Aoscompo from '@/utils/aos'
 const font = DM_Sans({ subsets: ['latin'] })
+import { Toaster } from 'react-hot-toast'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black `}
         
       >
+        <Toaster position='top-center' toastOptions={{
+            duration: 3000,
+          }}/>
         <TreeProvider>
           <UserProvider>
             <Header />

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Minus, Download, Upload, ArrowRight, Layers, ImageIcon } from "lucide-react"
+import { Plus, Minus, Download, Upload, ArrowRight, Layers, ImageIcon, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTree } from "@/lib/tree-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { saveTree } from "@/lib/storage"
 import { TEMPLATES } from "@/lib/templates"
 import { BACKGROUNDS } from "@/lib/backgrounds"
+import { useUser } from "@/lib/user-context"
 
 export function Toolbar() {
   const {
@@ -30,6 +31,9 @@ export function Toolbar() {
     zoomOut,
     setZoom,
   } = useTree()
+
+  const { user, updateUser } = useUser()
+
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isConnectOpen, setIsConnectOpen] = useState(false)
   const [isDrawArrowOpen, setIsDrawArrowOpen] = useState(false)
@@ -44,6 +48,8 @@ export function Toolbar() {
   const [diagramNameInput, setDiagramNameInput] = useState(canvasState.diagramName)
   const selectedNode = getSelectedNode()
   const selectedArrow = arrows.find((a) => canvasState.selectedNodeId === a.id) // Using selectedNodeId temporarily to track selected arrow
+  const [isSaveOpen, setIsSaveOpen] = useState(false)
+  const [saveDiagramName, setSaveDiagramName] = useState(canvasState.diagramName)
 
   const handleChangeBackground = (backgroundId: string) => {
     setCanvasState({ backgroundId })
@@ -159,6 +165,33 @@ export function Toolbar() {
     input.click()
   }
 
+  const handleSaveDiagram = () => {
+    if (!saveDiagramName.trim()) {
+      alert("Please enter a diagram name")
+      return
+    }
+
+    if (!user) return
+
+    const diagramToSave = {
+      id: `diagram-${Date.now()}`,
+      name: saveDiagramName,
+      treeData: tree,
+      arrows: arrows,
+      backgroundId: canvasState.backgroundId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    const currentDiagrams = user.diagrams || []
+    const updatedDiagrams = [...currentDiagrams, diagramToSave]
+    updateUser({ diagrams: updatedDiagrams })
+
+    alert(`Diagram "${saveDiagramName}" saved successfully!`)
+    setSaveDiagramName("")
+    setIsSaveOpen(false)
+  }
+
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tree, null, 2)
     const dataBlob = new Blob([dataStr], { type: "application/json" })
@@ -193,7 +226,6 @@ export function Toolbar() {
   return (
     <div className="flex gap-2 p-4 bg-card border-b border-border flex-wrap items-center">
       <div className="flex items-center gap-2">
-        <Label className="text-sm font-medium">Diagram:</Label>
         <Input
           type="text"
           value={diagramNameInput}
@@ -351,6 +383,39 @@ export function Toolbar() {
             <Plus size={16} />
           </button>
         </div>
+        <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2 bg-transparent cursor-pointer bg-[#A2E8BC]">
+              <Save className="w-4 h-4" />
+              Save
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Save Diagram</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="save-name">Diagram Name</Label>
+                <Input
+                  id="save-name"
+                  value={saveDiagramName}
+                  onChange={(e) => setSaveDiagramName(e.target.value)}
+                  placeholder="Enter diagram name..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSaveDiagram()
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+              <Button onClick={handleSaveDiagram} className="w-full">
+                Save Diagram
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="outline" className="gap-2 bg-[#A2E8BC] cursor-pointer">

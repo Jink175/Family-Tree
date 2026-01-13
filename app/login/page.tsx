@@ -61,13 +61,20 @@ const AuthForm = () => {
             email: form.email,
             password: form.password,
             options: {
-            data: {
-                name: form.name, // lưu name vào user metadata
-            },
+                data: {
+                    name: form.name, // lưu name vào user metadata
+                },
             },
         })
 
-        if (error) throw error
+        if (error) {
+            if (error.message.includes('already registered')) {
+            toast.error('Email đã được đăng ký')
+            } else {
+            toast.error(error.message)
+            }
+            return // ⛔ CỰC KỲ QUAN TRỌNG
+        }
 
         toast.success('Register successful 🎉')
         setMode('signin')
@@ -77,8 +84,10 @@ const AuthForm = () => {
             password: form.password,
         })
 
-        if (error) throw error
-
+        if (error) {
+            toast.error('Bạn đang nhập sai email hoặc mật khẩu')
+            return
+        }
         toast.success('Login successful ✅')
         router.push('/')
         }
