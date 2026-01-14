@@ -14,6 +14,7 @@ import { BACKGROUNDS } from "@/lib/backgrounds"
 import { useUser } from "@/lib/user-context"
 import { supabase } from "@/lib/supabase"
 import toast from "react-hot-toast"
+import generateThumbnail from "@/lib/canvas-utils"
 
 export function Toolbar() {
   const {
@@ -32,15 +33,10 @@ export function Toolbar() {
     zoomIn, 
     zoomOut,
     setZoom,
+    canvasRef,
   } = useTree()
-
+  
   const { user, updateUser } = useUser()
-  const canvas = document.getElementById("family-canvas") as HTMLCanvasElement
-  let thumbnail: string | null = null
-
-  if (canvas) {
-    thumbnail = canvas.toDataURL("image/png", 0.6) // 60% quality
-  }
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isConnectOpen, setIsConnectOpen] = useState(false)
   const [isDrawArrowOpen, setIsDrawArrowOpen] = useState(false)
@@ -169,7 +165,7 @@ export function Toolbar() {
     }
     input.click()
   }
-
+  
   const handleSaveDiagram = async () => {
     const {
       data: { user },
@@ -185,60 +181,47 @@ export function Toolbar() {
       return
     }
 
+    let thumbnail: string | null = null
+    if (canvasRef.current) {
+      thumbnail = generateThumbnail(canvasRef.current)
+    }
+
     const payload = {
       name: canvasState.diagramName,
       nodes: tree.nodes,
       connections: tree.connections,
       arrows,
       background_id: canvasState.backgroundId,
-      thumbnail, // ✅ QUAN TRỌNG
+      thumbnail,
     }
 
     try {
-      // 🔹 UPDATE
       if (tree.id) {
-        const { data, error } = await supabase
+        await supabase
           .from("family_trees")
           .update(payload)
           .eq("id", tree.id)
-          .eq("user_id", user.id) // 🔐 RẤT QUAN TRỌNG
-          .select()
-          .single()
-
-        if (error || !data) throw error
-
-        setTreeData({
-          ...tree,
-          updatedAt: new Date(data.updated_at),
-        })
+          .eq("user_id", user.id)
 
         toast.success("Đã cập nhật sơ đồ")
-      }
-
-      // 🔹 INSERT
-      else {
-        const { data, error } = await supabase
+      } else {
+        const { data } = await supabase
           .from("family_trees")
-          .insert({
-            user_id: user.id,
-            ...payload,
-          })
+          .insert({ user_id: user.id, ...payload })
           .select()
           .single()
-
-        if (error || !data) throw error
 
         setTreeData({
           ...tree,
           id: data.id,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at),
+          created_at: new Date(data.created_at),
+          updated_at: new Date(data.updated_at),
         })
 
         toast.success("Đã lưu sơ đồ mới")
       }
     } catch (err) {
-      console.error("Save diagram error:", err)
+      console.error(err)
       toast.error("Lưu sơ đồ thất bại")
     }
   }
@@ -373,39 +356,14 @@ export function Toolbar() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isDrawArrowOpen} onOpenChange={setIsDrawArrowOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="gap-2 cursor-pointer bg-[#A2E8BC]">
-            <ArrowRight className="w-4 h-4" />
-            Draw Connect
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-center">Create Arrow</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-    
-            <div>
-              <Label htmlFor="arrow-type" className="mb-2">Line Style</Label>
-              <Select value={arrowType} onValueChange={(value) => setArrowType(value as any)}>
-                <SelectTrigger id="arrow-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="solid">Solid</SelectItem>
-                  <SelectItem value="dashed">Dashed</SelectItem>
-                  <SelectItem value="dotted">Dotted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button onClick={handleDrawArrow} className="w-full cursor-pointer">
-              Create Arrow
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <Button 
+        variant="outline" 
+        className="gap-2 cursor-pointer bg-[#A2E8BC]"
+        onClick={handleDrawArrow}
+      >
+        <ArrowRight className="w-4 h-4" />
+        Draw Connect
+      </Button>
 
       <div className="ml-auto flex gap-2">
         {/* Zoom Controls */}

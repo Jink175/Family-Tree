@@ -36,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <link rel='icon' href='/logo.svg' type='image/x-icon'></link>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"></meta>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black `}
         

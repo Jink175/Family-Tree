@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useCallback, useEffect } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
 import type {
   FamilyNode,
   Connection,
@@ -12,7 +12,6 @@ import type {
   Arrow,
   ArrowDragState,
 } from "./types"
-import { getCurrentTree } from "./storage"
 import { getSnapPoints } from "@/app/create/family-node-renderer"
 import { supabase } from "@/lib/supabase"
 import toast from "react-hot-toast"
@@ -44,6 +43,8 @@ interface TreeContextType {
   zoomIn: () => void
   zoomOut: () => void
   setZoom: (scale: number) => void
+  canvasRef: React.RefObject<HTMLCanvasElement | null>
+  loadTreeFromSupabase: (id: string) => Promise<void>
 }
 
 const TreeContext = createContext<TreeContextType | undefined>(undefined)
@@ -65,12 +66,14 @@ export function findNearestSnapPoint(x: number, y: number, nodes: FamilyNode[]) 
 
 
 export function TreeProvider({ children }: { children: React.ReactNode }) {
+    const isHydrated = useRef(false)
+    const canvasRef = useRef<HTMLCanvasElement | null>(null) // ✅ ĐÚNG
     const [tree, setTree] = useState<FamilyTree>({
     id: undefined,
     nodes: [],
     connections: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    created_at: new Date(),
+    updated_at: new Date(),
   })
 
   const [canvasState, setCanvasState] = useState<CanvasState>({
@@ -107,26 +110,6 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
 
   const [arrows, setArrows] = useState<Arrow[]>([])
 
-  // Load tree from localStorage on mount
-  // useEffect(() => {
-  //   const savedTree = getCurrentTree()
-  //   if (savedTree) {
-  //     setTree(savedTree)
-  //     // Load arrows from localStorage if available
-  //     const savedArrows = localStorage.getItem("familyTreeArrows")
-  //     if (savedArrows) {
-  //       setArrows(JSON.parse(savedArrows))
-  //     }
-  //     const savedDiagramName = localStorage.getItem("diagramName")
-  //     if (savedDiagramName) {
-  //       setCanvasState((prev) => ({
-  //         ...prev,
-  //         diagramName: savedDiagramName,
-  //       }))
-  //     }
-  //   }
-  // }, [])
-
   const loadTreeFromSupabase = async (treeId: string) => {
   const { data, error } = await supabase
     .from("family_trees")
@@ -143,25 +126,50 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     id: data.id,
     nodes: data.nodes,
     connections: data.connections,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
+    created_at: new Date(data.created_at),
+    updated_at: new Date(data.updated_at),
   })
 
-  setCanvasState(prev => ({
-    ...prev,
-    diagramName: data.name,
-    backgroundId: data.background_id,
-  }))
-  setArrows(data.arrows)
+  setCanvasState({
+    selectedNodeId: null,
+    panX: 0,
+    panY: 0,
+    scale: 1,
+    diagramName: data.name ?? "Untitled Diagram",
+    backgroundId: data.background_id ?? null,
+  })
 
-
+  setDragState({
+    isDragging: false,
+    draggedNodeId: null,
+    offsetX: 0,
+    offsetY: 0,
+  })
+  setConnectionDrawState({
+    isDrawing: false,
+    fromNodeId: null,
+    currentX: 0,
+    currentY: 0,
+    fromConnectionPoint: "bottom",
+  })
+  setArrowDragState({
+    isArrowDragging: false,
+    draggedArrowId: null,
+    draggedEndpoint: null,
+    offsetX: 0,
+    offsetY: 0,
+  })
+  setArrows(data.arrows || [])
+  isHydrated.current = true
 }
 
 
   // Auto-save arrows to localStorage
   useEffect(() => {
+    if (!isHydrated.current) return
     localStorage.setItem("familyTreeArrows", JSON.stringify(arrows))
   }, [arrows])
+
 
   useEffect(() => {
     localStorage.setItem("diagramName", canvasState.diagramName)
@@ -228,8 +236,12 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
   }, [tree.nodes, canvasState.selectedNodeId])
 
   const setTreeData = useCallback((newTree: FamilyTree) => {
-    setTree(newTree)
+    setTree(prev => ({
+      ...prev,
+      ...newTree,
+    }))
   }, [])
+
 
   const addArrow = (arrow: Omit<Arrow, "id">): string => {
     const id = crypto.randomUUID()
@@ -299,7 +311,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     setCanvasState(prev => ({ ...prev, scale }))
   }
 
-
+  
 
   const value: TreeContextType = {
     tree,
@@ -325,9 +337,11 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     zoomIn,
     zoomOut,
     setZoom,
+    canvasRef, // ✅ THÊM DÒNG NÀY
     setArrowDragState: handleSetArrowDragState,
     getsnapPoints: getSnapPoints,
     getNearestSnapPoint: findNearestSnapPoint,
+    loadTreeFromSupabase,
 
   }
 

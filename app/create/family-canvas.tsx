@@ -72,7 +72,6 @@ const NODE_WIDTH = NODE_WIDTH_CONST
 const NODE_HEIGHT = NODE_HEIGHT_CONST
 
 export function FamilyCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const {
     tree,
@@ -92,6 +91,7 @@ export function FamilyCanvas() {
     setArrowDragState,
     deleteNode,
     setCanvasState,
+    canvasRef, // ✅ LẤY TỪ CONTEXT
   } = useTree()
   const [hoveredNodeId, setHoveredNodeId] = useState<string>()
   const [selectedArrowId, setSelectedArrowId] = useState<string | null>(null)
@@ -102,6 +102,16 @@ export function FamilyCanvas() {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
   const [isSpacePressed, setIsSpacePressed] = useState(false)
 
+  useEffect(() => {
+    draw()
+  }, [
+    canvasState.scale,
+    canvasState.panX,
+    canvasState.panY,
+  ])
+
+
+  // Handle keyboard events for delete and space
   // Handle keyboard events for delete and space
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -142,11 +152,26 @@ export function FamilyCanvas() {
       }
     }
 
+    // ✅ THÊM PHẦN NÀY - Ngăn zoom toàn trang bằng Ctrl + wheel
+    // ✅ CẬP NHẬT HÀM NÀY
+    const preventBrowserZoom = (e: WheelEvent) => {
+      // Chặn tất cả wheel event có ctrlKey (pinch gesture trên touchpad)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    // ✅ THÊM DÒNG NÀY
+    document.addEventListener('wheel', preventBrowserZoom, { passive: false })
+    
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      // ✅ THÊM DÒNG NÀY
+      document.removeEventListener('wheel', preventBrowserZoom)
     }
   }, [selectedArrowId, canvasState.selectedNodeId, deleteArrow, deleteNode, selectNode])
 
@@ -223,9 +248,6 @@ export function FamilyCanvas() {
         ctx.stroke()
       }
     }
-    // ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
-    // ctx.font = "16px sans-serif"
-    // ctx.fillText(`📊 ${canvasState.diagramName}`, 16, 28)
     
     // Draw existing connections
     ctx.strokeStyle = "#94a3b8"
@@ -359,6 +381,13 @@ export function FamilyCanvas() {
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
+    
+    // Chỉ zoom khi dùng pinch gesture (Ctrl + wheel hoặc touchpad pinch)
+    // e.ctrlKey = true khi dùng pinch trên touchpad
+    if (!e.ctrlKey) {
+      return // Bỏ qua scroll wheel thông thường
+    }
+    
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -698,9 +727,10 @@ export function FamilyCanvas() {
       offsetY: 0,
     })
   }
-
+  
   return (
     <div ref={containerRef} className="relative w-full h-full bg-white cursor-crosshair overflow-hidden">
+      
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}

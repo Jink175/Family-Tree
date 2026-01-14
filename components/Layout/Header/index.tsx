@@ -57,7 +57,7 @@ const Header: React.FC = () => {
               </div>
             </Link>
           ) : (
-            <Link href="/login" className="border px-4 py-2 rounded-lg">
+            <Link href="/login" className="border px-4 py-2 rounded-lg text-[#2D6A4F] ">
               Log In
             </Link>
           )}

@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Upload, Save, Trash2, FolderOpen } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function ProfilePage() {
   const { user, updateUser } = useUser()
@@ -19,7 +20,7 @@ export default function ProfilePage() {
   const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null)
   const [diagrams, setDiagrams] = useState<any[]>([])
   const [loadingDiagrams, setLoadingDiagrams] = useState(true)
-
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -36,8 +37,13 @@ export default function ProfilePage() {
         .order("updated_at", { ascending: false })
 
       if (error) {
-        toast.error("Không tải được sơ đồ")
-        console.error(error)
+        if (
+          process.env.NODE_ENV === "development" &&
+          error.code !== "PGRST301" &&
+          error.message !== "Failed to fetch"
+        ) {
+          console.warn(error)
+        }
       } else {
         setDiagrams(data || [])
       }
@@ -102,8 +108,6 @@ export default function ProfilePage() {
   }
 
   const handleDeleteDiagram = async (id: string) => {
-    const confirm = window.confirm("Bạn có chắc muốn xoá sơ đồ này?")
-    if (!confirm) return
 
     const { error } = await supabase
       .from("family_trees")
@@ -195,6 +199,7 @@ export default function ProfilePage() {
                   setNewAvatarFile(null)
                   setNewAvatarPreview(null)
                 }}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
@@ -217,14 +222,14 @@ export default function ProfilePage() {
       </Card>
       <Card className="p-8">
         <div>
-          <h2 className="text-2xl font-bold text-center mb-8">Kho lưu trữ</h2>
+          <h2 className="text-2xl font-bold text-center mb-8">My Storage</h2>
           {loadingDiagrams ? (
             <div className="p-12 text-center">
-              <p className="text-muted-foreground">Đang tải sơ đồ...</p>
+              <p className="text-muted-foreground">Loading storage...</p>
             </div>
           ) : diagrams.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-muted-foreground mb-4">Bạn chưa có sơ đồ nào</p>
+              <p className="text-muted-foreground mb-4">You don't have any diagrams yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -243,16 +248,16 @@ export default function ProfilePage() {
                     <img
                       src={diagram.thumbnail}
                       alt={diagram.name}
-                      className="w-full h-40 object-cover rounded border mb-2"
+                      className="w-full h-40 object-cover rounded border mb-2 text-center"
                     />
                   ) : (
                     <div className="w-full h-40 bg-muted flex items-center justify-center text-xs text-muted-foreground rounded mb-2">
-                      Chưa có preview
+                      Haven't preview available
                     </div>
                   )}
 
                   <div className="text-xs text-muted-foreground mb-2">
-                    Cập nhật: {new Date(diagram.updated_at).toLocaleDateString("vi-VN")}
+                    Update: {new Date(diagram.updated_at).toLocaleDateString("vi-VN")}
                   </div>
 
                   <Button
@@ -260,11 +265,40 @@ export default function ProfilePage() {
                     variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleDeleteDiagram(diagram.id)
+                      setDeleteId(diagram.id)
                     }}
+                    className="cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
+                  <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+                    <DialogContent onClick={(e) => e.stopPropagation()}>
+                      <DialogHeader>
+                        <DialogTitle>Are you sure?</DialogTitle>
+                      </DialogHeader>
+
+                      <p className="text-sm text-muted-foreground">
+                        This diagram will be permanently deleted and cannot be recovered.
+                      </p>
+
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button variant="outline" onClick={() => setDeleteId(null)} className="cursor-pointer">
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={async () => {
+                            if (!deleteId) return
+                            await handleDeleteDiagram(deleteId)
+                            setDeleteId(null)
+                          }}
+                          className="cursor-pointer"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </Card>
 
               ))}

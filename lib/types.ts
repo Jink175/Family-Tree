@@ -24,8 +24,8 @@ export interface FamilyTree {
   id?: string
   nodes: FamilyNode[]
   connections: Connection[]
-  createdAt?: Date
-  updatedAt?: Date
+  created_at?: Date
+  updated_at?: Date
 }
 
 
