@@ -3,21 +3,11 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
-export interface FamilyMember {
-  id: string
-  name: string
-  relationship: string
-  age?: number
-  image: string // base64
-  createdAt: string
-}
-
 export interface AppUser {
   id: string
   email: string
   name: string
   avatar?: string
-  familyMembers?: FamilyMember[]
   diagrams?: Array<{
     id: string
     name: string

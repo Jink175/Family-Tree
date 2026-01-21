@@ -107,17 +107,14 @@ export function PropertiesPanel() {
             </div>
           </Card>
         </TabsContent>
-
         <TabsContent value="photo" className="space-y-4">
           <div>
             <h2 className="font-semibold mb-4">Person Photo</h2>
           </div>
-
           <Card className="p-4">
             <ImageUpload />
           </Card>
         </TabsContent>
-
       </Tabs>
     </div>
   )
