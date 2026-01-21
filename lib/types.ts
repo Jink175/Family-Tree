@@ -11,6 +11,8 @@ export interface FamilyNode {
   birthYear?: number
   deathYear?: number
   gender?: "male" | "female" | "other"
+  _pendingImage?: File // 🔹 file tạm, không lưu DB
+
 }
 
 export interface Connection {

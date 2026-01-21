@@ -1,9 +1,24 @@
-import fs from "fs"
-import path from "path"
+import { NextResponse } from "next/server"
 
-export async function GET() {
-  const filePath = path.join(process.cwd(), "public/data/all_embeddings.json")
-  const data = fs.readFileSync(filePath, "utf-8")
-  const embeddings = JSON.parse(data)
-  return new Response(JSON.stringify(embeddings))
+const AI_SERVER = "https://abc123.ngrok.io/recognize"
+
+export async function POST(req: Request) {
+  try {
+    const formData = await req.formData()
+
+    const res = await fetch(AI_SERVER, {
+      method: "POST",
+      body: formData
+    })
+
+    const data = await res.json()
+
+    return NextResponse.json(data)
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json(
+      { error: "AI server unreachable" },
+      { status: 500 }
+    )
+  }
 }

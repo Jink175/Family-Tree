@@ -185,6 +185,36 @@ export function Toolbar() {
     if (canvasRef.current) {
       thumbnail = generateThumbnail(canvasRef.current)
     }
+    // 🔥 Upload all pending images
+    for (const node of tree.nodes) {
+      const file = (node as any)._pendingImage
+      if (!file) continue
+
+      const ext = file.name.split(".").pop()
+      const filePath = `${user.id}/${tree.id || "temp"}/${node.id}.${ext}`
+
+      const { error } = await supabase.storage
+        .from("ai-images")
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type
+        })
+
+      if (error) {
+        toast.error(`Upload failed for ${node.name}`)
+        return
+      }
+
+      const { data } = supabase.storage
+        .from("ai-images")
+        .getPublicUrl(filePath)
+
+      // 🔹 Ghi URL vào node
+      node.image = data.publicUrl
+
+      // 🔹 Xóa file tạm
+      delete (node as any)._pendingImage
+    }
 
     const payload = {
       name: canvasState.diagramName,

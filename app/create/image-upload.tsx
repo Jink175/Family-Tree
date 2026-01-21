@@ -21,13 +21,16 @@ export function ImageUpload() {
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const base64String = e.target?.result as string
-      updateNode(selectedNode.id, { image: base64String })
-    }
-    reader.readAsDataURL(file)
+    // 🔹 Preview local (không base64)
+    const previewUrl = URL.createObjectURL(file)
+
+    // 🔹 Lưu file tạm trong node, CHƯA upload
+    updateNode(selectedNode.id, {
+      image: previewUrl,       // để hiển thị preview
+      _pendingImage: file     // để Toolbar upload khi Save
+    })
   }
+
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()

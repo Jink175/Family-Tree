@@ -11,13 +11,13 @@ export function saveTree(tree: FamilyTree): void {
     if (existingIndex >= 0) {
       trees[existingIndex] = {
         ...tree,
-        updatedAt: new Date(),
+        updated_at: new Date(),
       }
     } else {
       trees.push({
         ...tree,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       })
     }
 
