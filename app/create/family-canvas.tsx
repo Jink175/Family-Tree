@@ -175,21 +175,30 @@ export function FamilyCanvas() {
     }
   }, [selectedArrowId, canvasState.selectedNodeId, deleteArrow, deleteNode, selectNode])
 
-  useEffect(() => {
-    const background = BACKGROUNDS.find((bg) => bg.id === canvasState.backgroundId)
-    if (background) {
-      const img = new Image()
-      img.crossOrigin = "anonymous"
-      img.src = background.src
-      img.onload = () => {
-        setBackgroundImage(img)
-      }
-      img.onerror = () => {
-        console.warn(`Failed to load background image: ${background.src}`)
-        setBackgroundImage(null)
-      }
+    useEffect(() => {
+    const background = BACKGROUNDS.find(
+      (bg) => bg.id === canvasState.backgroundId
+    )
+
+    if (!background?.src) {
+      setBackgroundImage(null)
+      return
+    }
+
+    const img = new Image()
+    img.crossOrigin = "anonymous" // 🔥 BẮT BUỘC trước src
+    img.src = background.src
+
+    img.onload = () => {
+      setBackgroundImage(img)
+    }
+
+    img.onerror = () => {
+      console.warn(`Failed to load background image: ${background.src}`)
+      setBackgroundImage(null)
     }
   }, [canvasState.backgroundId])
+
 
   const draw = () => {
     const canvas = canvasRef.current

@@ -76,12 +76,20 @@ export default function FaceRecognitionPage() {
         body: formData
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Nhận diện thất bại')
+      const rawText = await response.text()
+
+      let data: any
+      try {
+        data = JSON.parse(rawText)
+      } catch {
+        console.error("RAW SERVER RESPONSE:", rawText)
+        throw new Error("AI server không trả về JSON hợp lệ")
       }
 
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Nhận diện thất bại")
+      }
+
       setResult({
         name: data.name,
         confidence: data.confidence,
@@ -108,8 +116,8 @@ export default function FaceRecognitionPage() {
     <div className="w-full h-full flex flex-col overflow-auto bg-background mt-30 rounded-2xl">
       {/* Header */}
       <div className="border-b border-border bg-card p-6">
-        <h1 className="text-3xl font-bold">Nhận Diện Khuôn Mặt</h1>
-        <p className="text-muted-foreground mt-2">Kích hoạt camera và chụp ảnh để nhận diện danh tính</p>
+        <h1 className="text-center text-3xl font-bold">Face Recognition</h1>
+        <p className="text-center text-muted-foreground mt-2">Activate the camera and take a photo for identity verification.</p>
       </div>
 
       <div className="flex-1 p-6 overflow-auto">
@@ -119,7 +127,7 @@ export default function FaceRecognitionPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Camera</CardTitle>
-                <CardDescription>Phát trực tiếp từ thiết bị của bạn</CardDescription>
+                <CardDescription>Stream directly from your device.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
@@ -140,10 +148,10 @@ export default function FaceRecognitionPage() {
                     <Button
                       onClick={startCamera}
                       size="lg"
-                      className="gap-2"
+                      className="gap-2 cursor-pointer"
                     >
                       <Camera className="w-4 h-4" />
-                      Bật Camera
+                      Turn ON
                     </Button>
                   ) : (
                     <>
@@ -156,12 +164,12 @@ export default function FaceRecognitionPage() {
                         {isLoading ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            Đang xử lý...
+                            Processing...
                           </>
                         ) : (
                           <>
                             <Camera className="w-4 h-4" />
-                            Chụp & Nhận Diện
+                            Capture & Recognize
                           </>
                         )}
                       </Button>
@@ -169,10 +177,10 @@ export default function FaceRecognitionPage() {
                         onClick={stopCamera}
                         variant="outline"
                         size="lg"
-                        className="gap-2 bg-transparent"
+                        className="gap-2 bg-transparent cursor-pointer"
                       >
                         <CameraOff className="w-4 h-4" />
-                        Tắt Camera
+                        Turn Off
                       </Button>
                     </>
                   )}
@@ -191,25 +199,25 @@ export default function FaceRecognitionPage() {
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>Kết Quả</CardTitle>
-                <CardDescription>Thông tin nhận diện</CardDescription>
+                <CardTitle>Result</CardTitle>
+                <CardDescription>Recognition information</CardDescription>
               </CardHeader>
               <CardContent>
                 {!result ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">Chụp ảnh để xem kết quả</p>
+                    <p className="text-muted-foreground">Capture an image to see the result</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="p-4 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950 dark:border-green-800">
-                      <p className="text-sm text-muted-foreground mb-1">Tên</p>
+                      <p className="text-sm text-muted-foreground mb-1">Name</p>
                       <p className="text-2xl font-bold text-green-700 dark:text-green-300">
                         {result.name}
                       </p>
                     </div>
 
                     <div className="p-4 bg-secondary rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-1">Độ Tin Cậy</p>
+                      <p className="text-sm text-muted-foreground mb-1">Confidence</p>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
                           <div
@@ -224,7 +232,7 @@ export default function FaceRecognitionPage() {
                     </div>
 
                     <div className="p-4 bg-secondary rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-1">Thời Gian</p>
+                      <p className="text-sm text-muted-foreground mb-1">Timestamp</p>
                       <p className="text-sm font-mono">{result.timestamp}</p>
                     </div>
 
@@ -236,7 +244,7 @@ export default function FaceRecognitionPage() {
                       variant="outline"
                       className="w-full"
                     >
-                      Chụp Lại
+                      Capture Again
                     </Button>
                   </div>
                 )}
@@ -246,13 +254,13 @@ export default function FaceRecognitionPage() {
             {/* Info Card */}
             <Card className="mt-4">
               <CardHeader>
-                <CardTitle className="text-base">Hướng Dẫn</CardTitle>
+                <CardTitle className="text-base">Instructions</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-2">
-                <p>1. Bấm "Bật Camera" để kích hoạt camera</p>
-                <p>2. Định vị khuôn mặt vào góc nhìn</p>
-                <p>3. Bấm "Chụp & Nhận Diện" để bắt đầu</p>
-                <p>4. Chờ kết quả xuất hiện</p>
+                <p>1. Click "Turn ON" to activate the camera</p>
+                <p>2. Position your face in the viewfinder</p>
+                <p>3. Click "Capture & Recognize" to start</p>
+                <p>4. Wait for the result to appear</p>
               </CardContent>
             </Card>
           </div>

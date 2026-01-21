@@ -194,7 +194,7 @@ export function Toolbar() {
       const filePath = `${user.id}/${tree.id || "temp"}/${node.id}.${ext}`
 
       const { error } = await supabase.storage
-        .from("ai-images")
+        .from("node-avatars")
         .upload(filePath, file, {
           upsert: true,
           contentType: file.type
@@ -206,7 +206,7 @@ export function Toolbar() {
       }
 
       const { data } = supabase.storage
-        .from("ai-images")
+        .from("node-avatars")
         .getPublicUrl(filePath)
 
       // 🔹 Ghi URL vào node
