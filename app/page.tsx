@@ -10,11 +10,10 @@ import { Metadata } from 'next'
 import BrandLogo from '@/app/landpage/Home/BrandLogo'
 import GlobalReach from '@/app/landpage/Home/GlobalReach'
 import Faq from '@/app/landpage/Home/Faq'
-// export const metadata: Metadata = {
-//   title: 'CrypGo',
-// }
+
 
 export default function TestPage() {
+  
   return (
     <main className='bg-black max-w-7xl mx-auto px-4 py-8'>
       <Hero />
