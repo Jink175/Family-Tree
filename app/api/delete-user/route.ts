@@ -3,17 +3,29 @@ import { createClient } from "@supabase/supabase-js"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // ⚠️ CHỈ DÙNG SERVER
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // CHỈ DÙNG SERVER
 )
 
 export async function POST(req: Request) {
-  const { userId } = await req.json()
+  try {
+    const { userId } = await req.json()
 
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Missing userId" },
+        { status: 400 }
+      )
+    }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Delete failed" },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ success: true })
 }

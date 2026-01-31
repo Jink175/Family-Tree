@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/input"
 import { useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import toast from "react-hot-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface User {
   id: string
@@ -17,14 +27,19 @@ interface User {
   joinDate: string
   status: "active" | "inactive"
   diagramCount: number
+  role: "admin" | "user"
 }
+
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
 
   const [searchTerm, setSearchTerm] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
+  const PAGE_SIZE = 10
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
 
@@ -34,26 +49,27 @@ export function AdminUsersPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc muốn xóa user này không?")) return
+  const handleDelete = async () => {
+    if (!deleteUserId) return
 
     try {
-        const res = await fetch("/api/admin/delete-user", {
+      const res = await fetch("/api/delete-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: id }),
-        })
+        body: JSON.stringify({ userId: deleteUserId }),
+      })
 
-        const result = await res.json()
-        if (!res.ok) throw new Error(result.error)
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error)
 
-        setUsers(prev => prev.filter(u => u.id !== id))
-        toast.success("Đã xóa user")
+      setUsers(prev => prev.filter(u => u.id !== deleteUserId))
+      toast.success("Đã xóa user")
     } catch {
-        toast.error("Xóa user thất bại")
+      toast.error("Xóa user thất bại")
+    } finally {
+      setDeleteUserId(null)
     }
-    }
-
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -66,7 +82,7 @@ export function AdminUsersPage() {
         if (error) throw error
 
         setUsers(
-            (data || []).map((u: any) => ({
+          (data || []).map((u: any) => ({
             id: u.id,
             name: u.full_name || "No name",
             email: u.email,
@@ -74,9 +90,12 @@ export function AdminUsersPage() {
             joinDate: new Date(u.created_at).toLocaleDateString(),
             status: "active",
             diagramCount: u.diagram_count || 0,
-            }))
+            role: u.role || "user",
+          }))
         )
-        } catch {
+
+        } catch (error) {
+          console.error("Error loading users:", error)
         toast.error("Không tải được danh sách user")
         } finally {
         setLoading(false)
@@ -86,25 +105,31 @@ export function AdminUsersPage() {
     load()
     }, [])
 
-    const updateUserName = async (id: string, name: string) => {
-        await supabase
-            .from("profiles")
-            .update({ full_name: name })
-            .eq("id", id)
+    const saveUserName = async () => {
+      if (!editingId) return
+
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ full_name: editingName })
+          .eq("id", editingId)
+
+        if (error) throw error
 
         setUsers(prev =>
-            prev.map(u => (u.id === id ? { ...u, name } : u))
+          prev.map(u =>
+            u.id === editingId ? { ...u, name: editingName } : u
+          )
         )
+
+        toast.success("Đã cập nhật tên user")
+        setEditingId(null)
+        setEditingName("")
+      } catch {
+        toast.error("Cập nhật thất bại")
+      }
     }
 
-    useEffect(() => {
-        fetch(`/api/admin/users?page=${page}`)
-            .then(res => res.json())
-            .then(data => {
-            setUsers(data.users)
-            setTotal(data.total)
-            })
-    }, [page])
 
   return (
     <div className="space-y-6">
@@ -133,7 +158,7 @@ export function AdminUsersPage() {
           <div className="overflow-x-auto">
             {loading && (
                 <p className="text-center text-muted-foreground py-6">
-                    Đang tải danh sách user...
+                    Loading user's list...
                 </p>
             )}
             <table className="w-full text-sm">
@@ -142,6 +167,7 @@ export function AdminUsersPage() {
                   <th className="text-left py-3 px-4 font-medium">Name</th>
                   <th className="text-left py-3 px-4 font-medium">Email</th>
                   <th className="text-left py-3 px-4 font-medium">Join Date</th>
+                  <th className="text-left py-3 px-4 font-medium">Role</th>
                   <th className="text-left py-3 px-4 font-medium">Diagrams</th>
                   <th className="text-left py-3 px-4 font-medium">Actions</th>
                 </tr>
@@ -149,18 +175,70 @@ export function AdminUsersPage() {
               <tbody>
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="border-b border-border hover:bg-muted/50">
-                    <td className="py-3 px-4">{user.name}</td>
+                    <td className="py-3 px-4">
+                      {editingId === user.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            className="h-8 w-40"
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="cursor-pointer text-green-600"
+                            onClick={saveUserName}
+                          >
+                            ✓
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="cursor-pointer text-gray-500"
+                            onClick={() => {
+                              setEditingId(null)
+                              setEditingName("")
+                            }}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        user.name
+                      )}
+                    </td>
+
                     <td className="py-3 px-4">{user.email}</td>
                     <td className="py-3 px-4">{user.joinDate}</td>
+                    <td className="py-3 px-4">
+                      {user.role === "admin" ? (
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
+                          User
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-4">
                       <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{user.diagramCount}</span>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" className="cursor-pointer" onClick={() => setEditingId(user.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setEditingId(user.id)
+                            setEditingName(user.name)
+                          }}
+                        >
                           <Edit2 className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="cursor-pointer" onClick={() => handleDelete(user.id)}>
+                        <Button variant="ghost" size="sm" className="cursor-pointer" onClick={() => setDeleteUserId(user.id)}>
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
                       </div>
@@ -172,28 +250,56 @@ export function AdminUsersPage() {
           </div>
         </CardContent>
       </Card>
-      <div className="flex justify-between items-center mt-4">
-        <Button
+      <div className="flex justify-between items-center pt-4">
+        <p className="text-sm text-muted-foreground">
+          Trang {page} / {Math.ceil(total / PAGE_SIZE) || 1}
+        </p>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
             disabled={page === 1}
             onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             className="cursor-pointer"
-        >
-            Prev
-        </Button>
-
-        <span>
-            Page {page} / {Math.ceil(total / 10)}
-        </span>
-
-        <Button
-            disabled={page >= Math.ceil(total / 10)}
+            disabled={page >= Math.ceil(total / PAGE_SIZE)}
             onClick={() => setPage(p => p + 1)}
-            className="cursor-pointer"
-        >
+          >
             Next
-        </Button>
-    </div>
+          </Button>
+        </div>
+      </div>
+    <AlertDialog
+      open={!!deleteUserId}
+      onOpenChange={(open) => !open && setDeleteUserId(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            User deletion is permanent. Are you sure you want to delete this user?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
+        <AlertDialogFooter>
+          <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700 cursor-pointer"
+            onClick={handleDelete}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+            
     </div>
   )
 }
