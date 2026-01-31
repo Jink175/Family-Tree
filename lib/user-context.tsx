@@ -6,8 +6,8 @@ import { supabase } from "@/lib/supabase"
 export interface AppUser {
   id: string
   email: string
-  name: string
-  avatar?: string
+  full_name: string
+  avatar_url?: string | null
   diagrams?: Array<{
     id: string
     name: string
@@ -22,7 +22,8 @@ export interface AppUser {
 interface UserContextType {
   user: AppUser | null
   refreshUser: () => Promise<void>
-  updateUser: (updates: Partial<AppUser>) => Promise<void>
+  // update local state only (DB update làm ở page)
+  updateUser: (updates: Partial<AppUser>) => void
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -30,7 +31,6 @@ const UserContext = createContext<UserContextType | undefined>(undefined)
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null)
 
-  // Refresh user from Supabase
   const refreshUser = async () => {
     const { data } = await supabase.auth.getUser()
     const u = data.user
@@ -38,34 +38,41 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       return
     }
+
+    // ✅ lấy profile từ table profiles (nguồn chuẩn cho full_name/avatar_url)
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", u.id)
+      .single()
+
+    // Nếu chưa có row profiles thì fallback sang auth metadata
+    const fullName =
+      profile?.full_name ??
+      (u.user_metadata?.full_name as string | undefined) ??
+      ""
+
+    const avatarUrl =
+      profile?.avatar_url ??
+      (u.user_metadata?.avatar_url as string | undefined) ??
+      null
+
+    if (profileErr) {
+      // optional: console.warn(profileErr)
+      // vẫn set user từ fallback để app chạy
+    }
+
     setUser({
       id: u.id,
-      email: u.email!,
-      name: u.user_metadata?.name || "",
-      avatar: u.user_metadata?.avatar,
+      email: u.email ?? "",
+      full_name: fullName,
+      avatar_url: avatarUrl,
     })
   }
 
-  // Update user metadata
-  const updateUser = async (updates: Partial<AppUser>) => {
-    if (!user) return
-
-    const { data, error } = await supabase.auth.updateUser({
-      data: {
-        ...updates,
-        name: updates.name ?? user.name,
-        avatar: updates.avatar ?? user.avatar,
-      },
-    })
-
-    if (error) throw error
-
-    setUser({
-      id: data.user!.id,
-      email: data.user!.email!,
-      name: data.user!.user_metadata?.name || "",
-      avatar: data.user!.user_metadata?.avatar,
-    })
+  // ✅ update state tại chỗ để UI đổi ngay
+  const updateUser = (updates: Partial<AppUser>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev))
   }
 
   useEffect(() => {

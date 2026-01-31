@@ -167,7 +167,7 @@ const AuthForm = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <Icon icon={showPassword ? 'mdi:eye-off' : 'mdi:eye'} />
+                <Icon className='cursor-pointer' icon={showPassword ? 'mdi:eye-off' : 'mdi:eye'} />
               </button>
             </div>
 
@@ -196,7 +196,7 @@ const AuthForm = () => {
                     className="absolute right-3 top-1/2 -translate-y-1/2"
                     >
                     <Icon
-                        icon={showConfirmPassword ? 'mdi:eye-off' : 'mdi:eye'}
+                        className='cursor-pointer' icon={showConfirmPassword ? 'mdi:eye-off' : 'mdi:eye'}
                     />
                     </button>
 

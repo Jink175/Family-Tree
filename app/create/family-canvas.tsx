@@ -357,20 +357,6 @@ export function FamilyCanvas() {
     ctx.restore()
   }
   
-  // Resize canvas
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const container = containerRef.current
-    if (!canvas || !container) return
-
-    canvas.width = container.clientWidth
-    canvas.height = container.clientHeight
-    draw()
-  }, [containerRef.current?.clientWidth, containerRef.current?.clientHeight, canvasState.diagramName])
-
-  // Draw when state changes
-  useEffect(() => draw(), [tree, canvasState, hoveredNodeId, connectionDrawState, arrows, selectedArrowId, backgroundImage])
-
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return

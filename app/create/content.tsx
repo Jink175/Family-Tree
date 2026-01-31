@@ -11,7 +11,8 @@ export default function CreateContent() {
   const params = useSearchParams()
   const treeId = params.get("id")
   const { loadTreeFromSupabase } = useTree()
-
+  const searchParams = useSearchParams()
+  const diagramId = searchParams.get("id") ?? "new"
   useEffect(() => {
     if (treeId) {
       loadTreeFromSupabase(treeId)
@@ -23,7 +24,7 @@ export default function CreateContent() {
       <Toolbar />
       <div className="flex flex-1 gap-0 overflow-hidden">
         <div className="flex-1">
-          <FamilyCanvas />
+          <FamilyCanvas key={diagramId}/>
         </div>
         <div className="w-80 border-l border-border bg-card">
           <PropertiesPanel />
