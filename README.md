@@ -8,7 +8,7 @@
 > 
 > **Sinh viên:** Đoàn Vĩnh Khang (22H1120127)
 > 
-> **Giảng viên hướng dẫn:** ThS. Lê Văn Quốc Anh
+> **Giảng viên hướng dẫn:** TS. Lê Văn Quốc Anh
 
 ## 📖 Giới thiệu
 
@@ -104,6 +104,7 @@ Dưới đây là một số hình ảnh thực tế của hệ thống:
 <img width="1920" height="1080" alt="Ảnh chụp màn hình (188)" src="https://github.com/user-attachments/assets/38077483-ad5b-463a-92c2-6b3530a0c5e7" />
 
 <img width="1920" height="1080" alt="Ảnh chụp màn hình (189)" src="https://github.com/user-attachments/assets/ee54fc81-deae-4613-ab44-92b2795d96f2" />
+
 
 Kiến trúc hệ thống
 Sơ đồ luồng dữ liệu giữa Next.js, Supabase và Google Colab:
