@@ -92,6 +92,7 @@ const AuthForm = () => {
 
         toast.success('Login successful ✅')
         router.push('/')
+        router.refresh() 
       }
     } catch (err: any) {
       toast.error(err.message)

@@ -11,12 +11,14 @@ import { User } from '@supabase/supabase-js'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { useUser } from '@/lib/user-context'
+import { useIsAdmin } from "./useIsAdmin"
 
 const Header: React.FC = () => {
   const pathname = usePathname()
   const [sticky, setSticky] = useState(false)
   const [navbarOpen, setNavbarOpen] = useState(false)
   const { user } = useUser()
+  const isAdmin = useIsAdmin()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,10 +38,20 @@ const Header: React.FC = () => {
         <Logo />
 
         {/* Desktop menu */}
-        <nav className="hidden lg:flex items-center gap-8">
-          {headerData.map((item, index) => (
-            <HeaderLink key={index} item={item} />
+        <nav className="flex gap-6">
+          {headerData.map((item) => (
+            <HeaderLink key={item.href} item={item} />
           ))}
+
+          {/* Chỉ admin mới thấy Dashboard */}
+          {isAdmin && (
+            <HeaderLink
+              item={{
+                label: "Dashboard",
+                href: "/dashboard",
+              }}
+            />
+          )}
         </nav>
 
         {/* Login button */}

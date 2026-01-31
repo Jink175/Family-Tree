@@ -10,6 +10,16 @@ import { supabase } from "@/lib/supabase"
 import { useUser } from "@/lib/user-context"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Diagram {
   id: string
@@ -32,6 +42,9 @@ export function AdminDiagramsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [searchTerm, setSearchTerm] = useState("")
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
 
   const filteredDiagrams = diagrams.filter(
     (diagram) =>
@@ -39,21 +52,30 @@ export function AdminDiagramsPage() {
       diagram.creator.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleDelete = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("family_trees")
-        .delete()
-        .eq("id", id)
+  const confirmDelete = async () => {
+  if (!deleteId) return
 
-      if (error) throw error
+  try {
+    setDeleting(true)
 
-      setDiagrams(prev => prev.filter(d => d.id !== id))
-      toast.success("Đã xóa sơ đồ")
-    } catch {
-      toast.error("Xóa thất bại")
-    }
+    const { error } = await supabase
+      .from("family_trees")
+      .delete()
+      .eq("id", deleteId)
+
+    if (error) throw error
+
+    setDiagrams(prev => prev.filter(d => d.id !== deleteId))
+    toast.success("Đã xóa sơ đồ")
+  } catch {
+    toast.error("Xóa thất bại")
+  } finally {
+    setDeleting(false)
+    setDeleteId(null)
   }
+}
+
+
 
   const { user } = useUser()
 
@@ -205,12 +227,12 @@ export function AdminDiagramsPage() {
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="sm" className="cursor-pointer"
                           onClick={() => router.push(`/create?id=${diagram.id}`)}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(diagram.id)}>
+                        <Button variant="ghost" size="sm" className="cursor-pointer" onClick={() => setDeleteId(diagram.id)}>
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
                       </div>
@@ -248,7 +270,30 @@ export function AdminDiagramsPage() {
           </Button>
         </div>
       </div>
+    <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This diagram will be permanently deleted and cannot be recovered.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting} className="cursor-pointer">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={deleting}
+            onClick={confirmDelete}
+            className="bg-red-600 hover:bg-red-700 cursor-pointer"
+          >
+            {deleting ? "Đang xóa..." : "Xóa"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+            
     </div>
   )
 }
