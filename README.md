@@ -65,7 +65,7 @@ npm install
 # Tạo file .env.local và điền thông tin Supabase
 # NEXT_PUBLIC_SUPABASE_URL=...
 # NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-
+```
 ### 3. Thiết lập AI Server (Google Colab)
 
 Do mô hình FaceNet yêu cầu GPU để xử lý nhanh, server AI được đặt trên Google Colab.
@@ -93,7 +93,7 @@ Sau khi đã cấu hình xong Database (Supabase) và AI Server (Colab), quay l�
 npm run dev
 
 Mở trình duyệt và truy cập: http://localhost:3000
-
+```
 📸 Hình ảnh Demo
 Dưới đây là một số hình ảnh thực tế của hệ thống:
 
@@ -108,6 +108,7 @@ Dưới đây là một số hình ảnh thực tế của hệ thống:
 Kiến trúc hệ thống
 Sơ đồ luồng dữ liệu giữa Next.js, Supabase và Google Colab:
 
+```bash
 graph TD
     User[Người dùng] -->|HTTPS| NextJS[Next.js Client]
     
@@ -126,6 +127,7 @@ graph TD
     style NextJS fill:#bbf,stroke:#333,stroke-width:2px
     style Supabase fill:#bfb,stroke:#333,stroke-width:2px
     style Colab fill:#fbb,stroke:#333,stroke-width:2px
+```
 
 🤝 Tác giả
 Đoàn Vĩnh Khang
