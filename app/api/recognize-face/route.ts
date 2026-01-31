@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-const AI_SERVER = "https://c9604d2f6828.ngrok-free.app/recognize-face"
+const AI_SERVER = "https://6c0cbcf7b1d2.ngrok-free.app/recognize-face"
 
 export async function POST(req: Request) {
   try {

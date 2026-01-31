@@ -60,7 +60,7 @@ const Header: React.FC = () => {
             <Link href="/user">
               <div className="w-10 h-10 rounded-full overflow-hidden border border-primary">
                 <Image
-                  src={user.avatar || '/logo.jpg'}
+                  src={user.avatar_url || '/logo.jpg'}
                   alt="avatar"
                   width={40}
                   height={40}

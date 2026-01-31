@@ -8,42 +8,45 @@ import { useTree } from "@/lib/tree-context"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Upload, Save, Trash2, FolderOpen } from "lucide-react"
+import { Upload, Save, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function ProfilePage() {
-  const { user, updateUser } = useUser()
+  const { user, updateUser, refreshUser } = useUser()
   const { setTreeData } = useTree()
   const router = useRouter()
+
   const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null)
   const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null)
+
   const [diagrams, setDiagrams] = useState<any[]>([])
   const [loadingDiagrams, setLoadingDiagrams] = useState(true)
+
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+
   const [formData, setFormData] = useState({
-    name: "",
+    full_name: "",
     email: "",
   })
 
+  // Fetch user's diagrams
   useEffect(() => {
     const fetchDiagrams = async () => {
       if (!user) return
 
+      setLoadingDiagrams(true)
+
       const { data, error } = await supabase
         .from("family_trees")
         .select("id, name, updated_at, thumbnail")
+        .eq("user_id", user.id) // ✅ chỉ lấy của user hiện tại
         .order("updated_at", { ascending: false })
 
       if (error) {
-        if (
-          process.env.NODE_ENV === "development" &&
-          error.code !== "PGRST301" &&
-          error.message !== "Failed to fetch"
-        ) {
-          console.warn(error)
-        }
+        console.warn(error)
+        toast.error("Không tải được danh sách sơ đồ")
       } else {
         setDiagrams(data || [])
       }
@@ -54,65 +57,89 @@ export default function ProfilePage() {
     fetchDiagrams()
   }, [user])
 
+  // Init form from user context
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name,
-        email: user.email,
-      })
-    }
+    if (!user) return
+    setFormData({
+      full_name: user.full_name ?? "",
+      email: user.email ?? "",
+    })
   }, [user])
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: "full_name" | "email", value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleSaveProfile = async () => {
-    let avatarUrl = user?.avatar || null
-
-    if (newAvatarFile && user) {
-      const fileExt = newAvatarFile.name.split(".").pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-
-
-      await supabase.storage
-        .from("avatars")
-        .upload(fileName, newAvatarFile, { upsert: true })
-
-      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
-      avatarUrl = `${data.publicUrl}?t=${Date.now()}`
-      updateUser({
-        name: formData.name,
-        avatar: avatarUrl,
-      })
-
-    }
-
-    // Update user info
-    updateUser({
-      name: formData.name,
-      avatar: avatarUrl || undefined,
-    })
-
-    setNewAvatarFile(null)
-    setNewAvatarPreview(null)
-    setIsEditing(false)
-    toast.success('Profile updated')
   }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setNewAvatarFile(file)
-    setNewAvatarPreview(URL.createObjectURL(file)) // hiển thị preview ngay
+    setNewAvatarPreview(URL.createObjectURL(file))
   }
 
-  const handleDeleteDiagram = async (id: string) => {
+  const handleSaveProfile = async () => {
+    if (!user) return
 
-    const { error } = await supabase
-      .from("family_trees")
-      .delete()
-      .eq("id", id)
+    try {
+      let avatarUrl = user.avatar_url || null
+
+      // 1) Upload avatar nếu có
+      if (newAvatarFile) {
+        const fileExt = newAvatarFile.name.split(".").pop()
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`
+
+        const { error: uploadErr } = await supabase.storage
+          .from("avatars")
+          .upload(fileName, newAvatarFile, { upsert: true })
+
+        if (uploadErr) throw uploadErr
+
+        const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
+        avatarUrl = `${data.publicUrl}?t=${Date.now()}`
+      }
+
+      // 2) Update AUTH metadata (optional nhưng bạn muốn đồng nhất thì để)
+      const { error: authErr } = await supabase.auth.updateUser({
+        data: {
+          full_name: formData.full_name,
+          avatar_url: avatarUrl, // ✅ lưu cả avatar_url vào metadata nếu muốn
+        },
+      })
+      if (authErr) throw authErr
+
+      // 3) ✅ Update PROFILES (CÁI BẠN ĐANG THIẾU)
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.full_name,
+          avatar_url: avatarUrl,
+        })
+        .eq("id", user.id)
+
+      if (profileErr) throw profileErr
+
+      // 4) Refresh UI (cách 1: refreshUser, chuẩn nhất)
+      await refreshUser()
+
+      // hoặc cách 2: update local state ngay lập tức (để khỏi chờ)
+      updateUser({
+        full_name: formData.full_name,
+        avatar_url: avatarUrl,
+      })
+
+      setNewAvatarFile(null)
+      setNewAvatarPreview(null)
+      setIsEditing(false)
+      toast.success("Profile updated")
+    } catch (e) {
+      console.error(e)
+      toast.error("Update profile failed")
+    }
+  }
+
+
+  const handleDeleteDiagram = async (id: string) => {
+    const { error } = await supabase.from("family_trees").delete().eq("id", id)
 
     if (error) {
       toast.error("Xoá thất bại")
@@ -122,52 +149,50 @@ export default function ProfilePage() {
     }
   }
 
-  // LOG OUT
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push("/login")
   }
-
-  if (!user) return <div>Loading...</div>
   
+  if (!user) return <div>Loading...</div>
+  const avatarSrc = newAvatarPreview || user.avatar_url || "/logo.jpg"
+
+
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-8 mt-16">
+      
       {/* Profile Card */}
       <Card className="p-8">
         <h2 className="text-2xl font-bold mb-6 text-center">Personal Information</h2>
+
         <div className="space-y-6 flex flex-col md:flex-row gap-6">
           {/* Avatar */}
-          <div className="flex flex-col items-center gap-4">
-            {user.avatar ? (
-              <img
-                src={newAvatarPreview || user.avatar || '/logo.jpg'}
-                alt={user.name}
-                className="w-24 h-24 rounded-full object-cover border-2 border-border"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center text-2xl font-bold">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-
-            {/* Only allow changing avatar when editing */}
-            {isEditing && (
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarChange}
+          {/* Avatar */}
+            <div className="flex flex-col items-center gap-4">
+              {newAvatarPreview || user.avatar_url ? (
+                <img
+                  src={avatarSrc}
+                  alt={formData.full_name}
+                  className="w-24 h-24 rounded-full object-cover border-2 border-border"
                 />
-                <Button size="sm" className="gap-2" asChild>
-                  <span>
-                    <Upload className="w-4 h-4" />
-                    Change
-                  </span>
-                </Button>
-              </label>
-            )}
-          </div>
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center text-2xl font-bold">
+                  {(formData.full_name?.charAt(0) || "?").toUpperCase()}
+                </div>
+              )}
+
+              {isEditing && (
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                  <Button size="sm" className="gap-2" asChild>
+                    <span>
+                      <Upload className="w-4 h-4" />
+                      Change
+                    </span>
+                  </Button>
+                </label>
+              )}
+            </div>
 
 
           {/* Info Fields */}
@@ -175,12 +200,13 @@ export default function ProfilePage() {
             <div>
               <label className="text-sm font-medium">Name</label>
               <Input
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
+                value={formData.full_name}
+                onChange={(e) => handleInputChange("full_name", e.target.value)}
                 disabled={!isEditing}
                 className="mt-1"
               />
             </div>
+
             <div>
               <label className="text-sm font-medium">Email</label>
               <Input value={formData.email} disabled className="mt-1 bg-muted" />
@@ -198,31 +224,39 @@ export default function ProfilePage() {
                   setIsEditing(false)
                   setNewAvatarFile(null)
                   setNewAvatarPreview(null)
+                  // reset form
+                  setFormData({
+                    full_name: user.full_name ?? "",
+                    email: user.email ?? "",
+                  })
                 }}
                 className="cursor-pointer"
               >
                 Cancel
               </Button>
+
               <Button onClick={handleSaveProfile} className="gap-2 cursor-pointer">
                 <Save className="w-4 h-4" />
                 Save
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)} className="cursor-pointer">Edit</Button>
+            <Button onClick={() => setIsEditing(true)} className="cursor-pointer">
+              Edit
+            </Button>
           )}
 
-          <Button
-            className="absolute left-0 bg-red-700 hover:bg-red-500 cursor-pointer gap-2"
-            onClick={handleLogout}
-          >
+          <Button className="absolute left-0 bg-red-700 hover:bg-red-500 cursor-pointer gap-2" onClick={handleLogout}>
             LOG OUT
           </Button>
         </div>
       </Card>
+
+      {/* Storage */}
       <Card className="p-8">
         <div>
           <h2 className="text-2xl font-bold text-center mb-8">My Storage</h2>
+
           {loadingDiagrams ? (
             <div className="p-12 text-center">
               <p className="text-muted-foreground">Loading storage...</p>
@@ -239,11 +273,8 @@ export default function ProfilePage() {
                   className="p-4 hover:shadow-lg cursor-pointer"
                   onClick={() => router.push(`/create?id=${diagram.id}`)}
                 >
-                  <h3 className="font-semibold truncate mb-2">
-                    {diagram.name}
-                  </h3>
+                  <h3 className="font-semibold truncate mb-2">{diagram.name}</h3>
 
-                  {/* 🖼️ THUMBNAIL */}
                   {diagram.thumbnail ? (
                     <img
                       src={diagram.thumbnail}
@@ -271,7 +302,8 @@ export default function ProfilePage() {
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
-                  <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+
+                  <Dialog open={deleteId === diagram.id} onOpenChange={() => setDeleteId(null)}>
                     <DialogContent onClick={(e) => e.stopPropagation()}>
                       <DialogHeader>
                         <DialogTitle>Are you sure?</DialogTitle>
@@ -288,8 +320,7 @@ export default function ProfilePage() {
                         <Button
                           variant="destructive"
                           onClick={async () => {
-                            if (!deleteId) return
-                            await handleDeleteDiagram(deleteId)
+                            await handleDeleteDiagram(diagram.id)
                             setDeleteId(null)
                           }}
                           className="cursor-pointer"
@@ -300,7 +331,6 @@ export default function ProfilePage() {
                     </DialogContent>
                   </Dialog>
                 </Card>
-
               ))}
             </div>
           )}
