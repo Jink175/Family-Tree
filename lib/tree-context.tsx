@@ -30,7 +30,9 @@ interface TreeContextType {
   deleteConnection: (id: string) => void
   selectNode: (id: string | null) => void
   setDragState: (state: Partial<DragState>) => void
-  setCanvasState: (state: Partial<CanvasState>) => void
+  setCanvasState: (
+    state: Partial<CanvasState> | ((prev: CanvasState) => Partial<CanvasState>)
+  ) => void
   setConnectionDrawState: (state: Partial<ConnectionDrawState>) => void
   getSelectedNode: () => FamilyNode | undefined
   setTreeData: (tree: FamilyTree) => void
@@ -110,58 +112,68 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
 
   const [arrows, setArrows] = useState<Arrow[]>([])
 
-  const loadTreeFromSupabase = async (treeId: string) => {
-  const { data, error } = await supabase
-    .from("family_trees")
-    .select("*")
-    .eq("id", treeId)
-    .single()
+    const setTreeData = useCallback((newTree: FamilyTree) => {
+      setTree(prev => ({
+        ...prev,
+        ...newTree,
+      }))
+    }, [])
 
-  if (error) {
-    toast.error("Không tải được sơ đồ")
-    return
-  }
+  const loadTreeFromSupabase = useCallback(async (treeId: string) => {
+    const { data, error } = await supabase
+      .from("family_trees")
+      .select("*")
+      .eq("id", treeId)
+      .single()
 
-  setTreeData({
-    id: data.id,
-    nodes: data.nodes,
-    connections: data.connections,
-    created_at: new Date(data.created_at),
-    updated_at: new Date(data.updated_at),
-  })
+    if (error) {
+      console.error(error)
+      toast.error("Không tải được sơ đồ")
+      return
+    }
 
-  setCanvasState({
-    selectedNodeId: null,
-    panX: 0,
-    panY: 0,
-    scale: 1,
-    diagramName: data.name ?? "Untitled Diagram",
-    backgroundId: data.background_id ?? null,
-  })
+    setTreeData({
+      id: data.id,
+      nodes: data.nodes ?? [],
+      connections: data.connections ?? [],
+      created_at: data.created_at ? new Date(data.created_at) : new Date(),
+      updated_at: data.updated_at ? new Date(data.updated_at) : new Date(),
+    })
 
-  setDragState({
-    isDragging: false,
-    draggedNodeId: null,
-    offsetX: 0,
-    offsetY: 0,
-  })
-  setConnectionDrawState({
-    isDrawing: false,
-    fromNodeId: null,
-    currentX: 0,
-    currentY: 0,
-    fromConnectionPoint: "bottom",
-  })
-  setArrowDragState({
-    isArrowDragging: false,
-    draggedArrowId: null,
-    draggedEndpoint: null,
-    offsetX: 0,
-    offsetY: 0,
-  })
-  setArrows(data.arrows || [])
-  isHydrated.current = true
-}
+    setCanvasState({
+      selectedNodeId: null,
+      panX: 0,
+      panY: 0,
+      scale: 1,
+      diagramName: data.name ?? "Untitled Diagram",
+      backgroundId: data.background_id ?? null,
+    })
+
+    setDragState({
+      isDragging: false,
+      draggedNodeId: null,
+      offsetX: 0,
+      offsetY: 0,
+    })
+    setConnectionDrawState({
+      isDrawing: false,
+      fromNodeId: null,
+      currentX: 0,
+      currentY: 0,
+      fromConnectionPoint: "bottom",
+    })
+    setArrowDragState({
+      isArrowDragging: false,
+      draggedArrowId: null,
+      draggedEndpoint: null,
+      offsetX: 0,
+      offsetY: 0,
+    })
+
+    setArrows(data.arrows || [])
+    isHydrated.current = true
+  }, [setTreeData, setCanvasState])
+
 
 
   // Auto-save arrows to localStorage
@@ -183,7 +195,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     setTree((prev) => ({
       ...prev,
       nodes: [...prev.nodes, newNode],
-      updatedAt: new Date(),
+      updated_at: new Date(),
     }))
   }, [])
 
@@ -191,7 +203,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     setTree((prev) => ({
       ...prev,
       nodes: prev.nodes.map((node) => (node.id === id ? { ...node, ...updates } : node)),
-      updatedAt: new Date(),
+      updated_at: new Date(),
     }))
   }, [])
 
@@ -200,7 +212,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       nodes: prev.nodes.filter((node) => node.id !== id),
       connections: prev.connections.filter((conn) => conn.sourceId !== id && conn.targetId !== id),
-      updatedAt: new Date(),
+      updated_at: new Date(),
     }))
   }, [])
 
@@ -220,7 +232,7 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     setTree((prev) => ({
       ...prev,
       connections: prev.connections.filter((conn) => conn.id !== id),
-      updatedAt: new Date(),
+      updated_at: new Date(),
     }))
   }, [])
 
@@ -234,14 +246,6 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
   const getSelectedNode = useCallback(() => {
     return tree.nodes.find((node) => node.id === canvasState.selectedNodeId)
   }, [tree.nodes, canvasState.selectedNodeId])
-
-  const setTreeData = useCallback((newTree: FamilyTree) => {
-    setTree(prev => ({
-      ...prev,
-      ...newTree,
-    }))
-  }, [])
-
 
   const addArrow = (arrow: Omit<Arrow, "id">): string => {
     const id = crypto.randomUUID()
@@ -272,12 +276,17 @@ export function TreeProvider({ children }: { children: React.ReactNode }) {
     }))
   }, [])
 
-  const handleSetCanvasState = useCallback((state: Partial<CanvasState>) => {
-    setCanvasState((prev) => ({
-      ...prev,
-      ...state,
-    }))
-  }, [])
+  const handleSetCanvasState = useCallback(
+    (state: Partial<CanvasState> | ((prev: CanvasState) => Partial<CanvasState>)) => {
+      setCanvasState((prev) => {
+        const patch = typeof state === "function" ? state(prev) : state
+        return { ...prev, ...patch }
+      })
+    },
+    []
+  )
+
+
 
   const handleSetConnectionDrawState = useCallback((state: Partial<ConnectionDrawState>) => {
     setConnectionDrawState((prev) => ({

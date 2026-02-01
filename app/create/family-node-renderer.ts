@@ -12,6 +12,20 @@ interface FamilyNodeRendererProps {
   isSelected: boolean
   onMouseDown: (e: React.MouseEvent, node: FamilyNode) => void
 }
+const avatarCache = new Map<string, HTMLImageElement>()
+
+function getAvatarImage(url: string) {
+  if (!url) return null
+
+  let img = avatarCache.get(url)
+  if (!img) {
+    img = new Image()
+    img.crossOrigin = "anonymous" // nếu ảnh từ supabase/public
+    img.src = url
+    avatarCache.set(url, img)
+  }
+  return img
+}
 
 export function renderNodeOnCanvas(
   ctx: CanvasRenderingContext2D,
@@ -53,8 +67,10 @@ export function renderNodeOnCanvas(
   const avatarY = node.y + 22
 
   if (node.image) {
-    const img = new Image()
-    img.onload = () => {
+    const img = getAvatarImage(node.image)
+
+    // Chỉ draw khi ảnh đã load xong
+    if (img && img.complete && img.naturalWidth > 0) {
       ctx.save()
       ctx.beginPath()
       ctx.arc(centerX, avatarY, avatarRadius, 0, Math.PI * 2)
@@ -67,8 +83,13 @@ export function renderNodeOnCanvas(
         avatarRadius * 2
       )
       ctx.restore()
+    } else {
+    // fallback trong lúc ảnh chưa load xong (vẽ placeholder)
+    ctx.fillStyle = "#e0e7ff"
+    ctx.beginPath()
+    ctx.arc(centerX, avatarY, avatarRadius, 0, Math.PI * 2)
+    ctx.fill()
     }
-    img.src = node.image
   } else {
     ctx.fillStyle = "#e0e7ff"
     ctx.beginPath()

@@ -23,11 +23,9 @@ export function Toolbar() {
     getSelectedNode,
     canvasState,
     addConnection,
-    deleteConnection,
     tree,
     setTreeData,
     addArrow,
-    deleteArrow,
     arrows,
     setCanvasState,
     zoomIn, 
@@ -46,12 +44,8 @@ export function Toolbar() {
   const [birthYear, setBirthYear] = useState("")
   const [targetNodeId, setTargetNodeId] = useState("")
   const [connectionType, setConnectionType] = useState<"parent-child" | "spouse" | "sibling">("parent-child")
-  const [arrowLabel, setArrowLabel] = useState("")
   const [arrowType, setArrowType] = useState<"solid" | "dashed" | "dotted">("solid")
   const selectedNode = getSelectedNode()
-  const selectedArrow = arrows.find((a) => canvasState.selectedNodeId === a.id) // Using selectedNodeId temporarily to track selected arrow
-  const [isSaveOpen, setIsSaveOpen] = useState(false)
-  const [saveDiagramName, setSaveDiagramName] = useState(canvasState.diagramName)
 
   const handleChangeBackground = (backgroundId: string) => {
     setCanvasState({ backgroundId })
@@ -73,24 +67,6 @@ export function Toolbar() {
       setName("")
       setBirthYear("")
       setIsAddOpen(false)
-    }
-  }
-
-  const handleDeleteSelected = () => {
-    if (canvasState.selectedNodeId) {
-      deleteNode(canvasState.selectedNodeId)
-    }
-  }
-
-  const handleCreateConnection = () => {
-    if (selectedNode && targetNodeId) {
-      addConnection({
-        sourceId: selectedNode.id,
-        targetId: targetNodeId,
-        type: connectionType,
-      })
-      setTargetNodeId("")
-      setIsConnectOpen(false)
     }
   }
 
@@ -128,96 +104,69 @@ export function Toolbar() {
     }
   }
 
-
-  const getOtherNodes = () => {
-    if (!selectedNode) return []
-    return tree.nodes.filter((node) => node.id !== selectedNode.id)
-  }
-
-  const handleSaveTree = () => {
-    const fileName = prompt("Enter a name for this family tree:", canvasState.diagramName) || canvasState.diagramName
-    saveTree({
-      ...tree,
-      name: fileName,
-    })
-    alert("Family tree saved successfully!")
-  }
-
   const handleLoadTree = () => {
     const input = document.createElement("input")
     input.type = "file"
     input.accept = ".json"
+
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          try {
-            const loadedTree = JSON.parse(event.target?.result as string)
-            setTreeData(loadedTree)
-            alert("Family tree loaded successfully!")
-          } catch (error) {
-            alert("Error loading file. Make sure it's a valid family tree file.")
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const loaded = JSON.parse(event.target?.result as string)
+
+          // Hỗ trợ cả file cũ (chỉ có tree) và file mới (có tree + canvasState)
+          const loadedTree = loaded.tree ?? loaded
+          setTreeData(loadedTree)
+
+          if (loaded.canvasState) {
+            setCanvasState({
+              diagramName: loaded.canvasState.diagramName ?? loadedTree.name ?? "",
+              backgroundId: loaded.canvasState.backgroundId ?? null,
+              scale: loaded.canvasState.scale ?? 1,
+              panX: loaded.canvasState.panX ?? 0,
+              panY: loaded.canvasState.panY ?? 0,
+            })
+          } else {
+            // file cũ không có canvasState
+            setCanvasState({
+              diagramName: loadedTree.name ?? "",
+            })
           }
+
+          if (loaded.arrows) {
+            // nếu context bạn có setter arrows, ví dụ setArrows(...)
+            // setArrows(loaded.arrows)
+          }
+
+          toast.success("Đã load sơ đồ")
+        } catch (err) {
+          toast.error("File không hợp lệ")
         }
-        reader.readAsText(file)
       }
+
+      reader.readAsText(file)
     }
+
     input.click()
   }
+
   
   const handleSaveDiagram = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !authUser) return toast.error("Bạn chưa đăng nhập")
 
-    if (!user) {
-      toast.error("Bạn chưa đăng nhập")
-      return
-    }
-
-    if (!canvasState.diagramName.trim()) {
-      toast.error("Tên sơ đồ không được để trống")
-      return
-    }
+    const diagramName = canvasState.diagramName?.trim()
+    if (!diagramName) return toast.error("Tên sơ đồ không được để trống")
 
     let thumbnail: string | null = null
-    if (canvasRef.current) {
-      thumbnail = generateThumbnail(canvasRef.current)
-    }
-    // 🔥 Upload all pending images
-    for (const node of tree.nodes) {
-      const file = (node as any)._pendingImage
-      if (!file) continue
+    if (canvasRef.current) thumbnail = generateThumbnail(canvasRef.current)
 
-      const ext = file.name.split(".").pop()
-      const filePath = `${user.id}/${tree.id || "temp"}/${node.id}.${ext}`
-
-      const { error } = await supabase.storage
-        .from("node-avatars")
-        .upload(filePath, file, {
-          upsert: true,
-          contentType: file.type
-        })
-
-      if (error) {
-        toast.error(`Upload failed for ${node.name}`)
-        return
-      }
-
-      const { data } = supabase.storage
-        .from("node-avatars")
-        .getPublicUrl(filePath)
-
-      // 🔹 Ghi URL vào node
-      node.image = data.publicUrl
-
-      // 🔹 Xóa file tạm
-      delete (node as any)._pendingImage
-    }
-
-    const payload = {
-      name: canvasState.diagramName,
+    const payloadBase = {
+      name: diagramName,
       nodes: tree.nodes,
       connections: tree.connections,
       arrows,
@@ -225,43 +174,96 @@ export function Toolbar() {
       thumbnail,
     }
 
-    try {
-      if (tree.id) {
-        await supabase
-          .from("family_trees")
-          .update(payload)
-          .eq("id", tree.id)
-          .eq("user_id", user.id)
+    let diagramId = tree.id as string | undefined
+    let wasCreated = false
 
-        toast.success("Đã cập nhật sơ đồ")
-      } else {
-        const { data } = await supabase
-          .from("family_trees")
-          .insert({ user_id: user.id, ...payload })
-          .select()
-          .single()
+    // 1) INSERT nếu chưa có id
+    if (!diagramId) {
+      const { data: inserted, error: insertErr } = await supabase
+        .from("family_trees")
+        .insert({ user_id: authUser.id, ...payloadBase })
+        .select("id, created_at, updated_at")
+        .single()
 
-        setTreeData({
-          ...tree,
-          id: data.id,
-          created_at: new Date(data.created_at),
-          updated_at: new Date(data.updated_at),
-        })
-
-        toast.success("Đã lưu sơ đồ mới")
+      if (insertErr || !inserted) {
+        console.error(insertErr)
+        return toast.error(insertErr?.message || "Lưu sơ đồ thất bại")
       }
-    } catch (err) {
-      console.error(err)
-      toast.error("Lưu sơ đồ thất bại")
+
+      diagramId = inserted.id
+      wasCreated = true
+
+      setTreeData({
+        ...tree,
+        id: diagramId,
+        created_at: new Date(inserted.created_at),
+        updated_at: new Date(inserted.updated_at),
+      })
+
+      toast.success("Đã lưu sơ đồ mới")
     }
+
+    // 2) Upload pending images (nếu có)
+    for (const node of tree.nodes) {
+      const file = (node as any)._pendingImage
+      if (!file) continue
+
+      const ext = file.name.split(".").pop() || "png"
+      const filePath = `${authUser.id}/${diagramId}/${node.id}.${ext}`
+
+      const { error: upErr } = await supabase.storage
+        .from("node-avatars")
+        .upload(filePath, file, { upsert: true, contentType: file.type })
+
+      if (upErr) {
+        console.error(upErr)
+        return toast.error(`Upload failed for ${node.name}`)
+      }
+
+      const { data: urlData } = supabase.storage.from("node-avatars").getPublicUrl(filePath)
+      node.image = urlData.publicUrl
+      delete (node as any)._pendingImage
+    }
+
+    // 3) UPDATE lại để lưu image URLs / thumbnail / background...
+    const { error: updateErr } = await supabase
+      .from("family_trees")
+      .update({ ...payloadBase, nodes: tree.nodes })
+      .eq("id", diagramId)
+
+    if (updateErr) {
+      console.error(updateErr)
+      return toast.error(updateErr.message || "Cập nhật thất bại")
+    }
+
+    setTreeData({ ...tree, id: diagramId, updated_at: new Date() })
+
+    // ✅ chỉ toast "cập nhật" khi đây là diagram đã tồn tại từ trước
+    if (!wasCreated) toast.success("Đã cập nhật sơ đồ")
   }
 
 
 
+
+
   const handleExportJSON = () => {
-    const dataStr = JSON.stringify(tree, null, 2)
-    const dataBlob = new Blob([dataStr], { type: "application/json" })
-    const url = URL.createObjectURL(dataBlob)
+    const payload = {
+      version: 1,
+      tree,
+      canvasState: {
+        diagramName: canvasState.diagramName,
+        backgroundId: canvasState.backgroundId,
+        // nếu bạn cần thêm: scale, offsetX, offsetY... thì add vào đây
+        scale: canvasState.scale,
+        panX: canvasState.panX,
+        panY: canvasState.panY,
+      },
+      arrows,
+    }
+
+    const dataStr = JSON.stringify(payload, null, 2)
+    const blob = new Blob([dataStr], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
     link.download = `${canvasState.diagramName || "family-tree"}.json`
@@ -269,10 +271,11 @@ export function Toolbar() {
     URL.revokeObjectURL(url)
   }
 
+
   const handleExportPNG = () => {
-    const canvas = document.getElementById("family-canvas") as HTMLCanvasElement
+    const canvas = canvasRef.current
     if (!canvas) {
-      alert("Canvas not found")
+      toast.error("Canvas not found")
       return
     }
 
@@ -281,11 +284,6 @@ export function Toolbar() {
     link.href = dataURL
     link.download = `${canvasState.diagramName || "family-tree"}.png`
     link.click()
-  }
-
-  const handleDiagramNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value
-    setCanvasState({ diagramName: newName })
   }
 
   return (
